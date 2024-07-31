@@ -42,7 +42,12 @@ func (h *hnsw) reconnectNeighboursOf(node *vertex,
 ) error {
 	nfc := newNeighborFinderConnector(h, node, entryPointID, nodeVec, distancer, targetLevel,
 		currentMaxLevel, denyList, true)
-
+	h.logger.WithFields(logrus.Fields{
+		"action":       "tombstone_reconnect_neighbors_of_after_new_neighbor_finder_connector",
+		"class":        h.className,
+		"shard":        h.shardName,
+		"entryPointID": entryPointID,
+	}).Infof("class %s: shard %s: in reassignNeighbor after newNeighborFinderConnector", h.className, h.shardName)
 	return nfc.Do()
 }
 
@@ -80,6 +85,11 @@ func newNeighborFinderConnector(graph *hnsw, node *vertex, entryPointID uint64,
 }
 
 func (n *neighborFinderConnector) Do() error {
+	n.graph.logger.WithFields(logrus.Fields{
+		"action":          "tombstone_reconnect_neighbors_of_after_new_neighbor_finder_connector",
+		"targetLevel":     n.targetLevel,
+		"currentMaxLevel": n.currentMaxLevel,
+	}).Infof("in reassignNeighbor after newNeighborFinderConnector")
 	for level := min(n.targetLevel, n.currentMaxLevel); level >= 0; level-- {
 		err := n.doAtLevel(level)
 		if err != nil {
@@ -190,6 +200,10 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 }
 
 func (n *neighborFinderConnector) doAtLevel(level int) error {
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "tombstone_neighbor_connections_do_at_level_begin",
+		"level":  level,
+	}).Infof("at start of neighbor_connections doAtLevel")
 	before := time.Now()
 
 	var results *priorityqueue.Queue[any]
@@ -296,6 +310,10 @@ func (n *neighborFinderConnector) doAtLevel(level int) error {
 		n.entryPointID = nextEntryPointID
 	}
 
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "tombstone_neighbor_connections_do_at_level_before_find_and_connect_update_connections",
+		"level":  level,
+	}).Infof("neighbor connections before findAndConnectUpdateConnections")
 	n.graph.insertMetrics.findAndConnectUpdateConnections(before)
 	return nil
 }
