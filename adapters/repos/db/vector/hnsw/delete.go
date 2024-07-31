@@ -429,10 +429,30 @@ func tombstoneDeletionConcurrency() int {
 
 func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTombstonedNodes breakCleanUpTombstonedNodesFunc) (ok bool, err error) {
 	h.RLock()
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_cleanup_begin",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: at start of reassignNeighborsOf", h.className, h.shardName)
 	size := len(h.nodes)
 	h.RUnlock()
 	h.resetLock.Lock()
 	defer h.resetLock.Unlock()
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_cleanup_begin",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighborsOf after locks", h.className, h.shardName)
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbors_of_after_locks",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighborsOf after locks", h.className, h.shardName)
 
 	g, ctx := enterrors.NewErrorGroupWithContextWrapper(h.logger, h.shutdownCtx)
 	ctx, cancel := context.WithCancel(ctx)
