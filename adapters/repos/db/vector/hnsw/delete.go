@@ -635,9 +635,17 @@ func (h *hnsw) reassignNeighbor(
 		"class":               h.className,
 		"shard":               h.shardName,
 		"tombstones_in_cycle": deleteList.Len(),
+		"neighbornode":        neighborNode,
 	}).Infof("class %s: shard %s: in reassignNeighbor after locked section", h.className, h.shardName)
 
 	if neighborNode == nil || deleteList.Contains(neighborNode.id) {
+		h.logger.WithFields(logrus.Fields{
+			"action":              "tombstone_reassign_neighbor_return_after_neighbornode_check",
+			"class":               h.className,
+			"shard":               h.shardName,
+			"tombstones_in_cycle": deleteList.Len(),
+			"neighbornode":        neighborNode,
+		}).Infof("class %s: shard %s: in reassignNeighbor return after neighborNode check", h.className, h.shardName)
 		return true, nil
 	}
 
