@@ -448,10 +448,33 @@ func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTom
 	}).Infof("class %s: shard %s: in reassignNeighborsOf after locks", h.className, h.shardName)
 
 	g, ctx := enterrors.NewErrorGroupWithContextWrapper(h.logger, h.shutdownCtx)
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbors_after_new_error_group",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighborsOf after new error group", h.className, h.shardName)
+
 	ctx, cancel := context.WithCancel(ctx)
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbors_after_context_with_cancel",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighborsOf after context with cancel", h.className, h.shardName)
+
 	defer cancel()
 	ch := make(chan uint64)
 	var cancelled atomic.Bool
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbors_before_starting_goroutines",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighborsOf before starting goroutines", h.className, h.shardName)
 
 	for i := 0; i < tombstoneDeletionConcurrency(); i++ {
 		g.Go(func() error {
