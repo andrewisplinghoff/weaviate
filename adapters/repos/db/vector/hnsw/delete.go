@@ -430,7 +430,7 @@ func tombstoneDeletionConcurrency() int {
 func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTombstonedNodes breakCleanUpTombstonedNodesFunc) (ok bool, err error) {
 	h.RLock()
 	h.logger.WithFields(logrus.Fields{
-		"action":              "tombstone_cleanup_begin",
+		"action":              "tombstone_reassign_neighbors_begin",
 		"class":               h.className,
 		"shard":               h.shardName,
 		"tombstones_in_cycle": deleteList.Len(),
@@ -439,13 +439,6 @@ func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTom
 	h.RUnlock()
 	h.resetLock.Lock()
 	defer h.resetLock.Unlock()
-
-	h.logger.WithFields(logrus.Fields{
-		"action":              "tombstone_cleanup_begin",
-		"class":               h.className,
-		"shard":               h.shardName,
-		"tombstones_in_cycle": deleteList.Len(),
-	}).Infof("class %s: shard %s: in reassignNeighborsOf after locks", h.className, h.shardName)
 
 	h.logger.WithFields(logrus.Fields{
 		"action":              "tombstone_reassign_neighbors_of_after_locks",
@@ -463,29 +456,75 @@ func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTom
 	for i := 0; i < tombstoneDeletionConcurrency(); i++ {
 		g.Go(func() error {
 			for {
+				h.logger.WithFields(logrus.Fields{
+					"action":              "tombstone_reassign_neighbors_goroutine_begin",
+					"class":               h.className,
+					"shard":               h.shardName,
+					"tombstones_in_cycle": deleteList.Len(),
+				}).Infof("class %s: shard %s: in reassignNeighborsOf start of goroutine", h.className, h.shardName)
 				if breakCleanUpTombstonedNodes() {
 					cancelled.Store(true)
 					cancel()
 					return nil
 				}
+				h.logger.WithFields(logrus.Fields{
+					"action":              "tombstone_reassign_neighbors_goroutine_after_break_clean_up_tombstoned_nodes",
+					"class":               h.className,
+					"shard":               h.shardName,
+					"tombstones_in_cycle": deleteList.Len(),
+				}).Infof("class %s: shard %s: in reassignNeighborsOf after breakCleanUpTombstonedNodes", h.className, h.shardName)
 				select {
 				case <-ctx.Done():
+					h.logger.WithFields(logrus.Fields{
+						"action":              "tombstone_reassign_neighbors_goroutine_context_done",
+						"class":               h.className,
+						"shard":               h.shardName,
+						"tombstones_in_cycle": deleteList.Len(),
+					}).Infof("class %s: shard %s: in reassignNeighborsOf goroutine context done", h.className, h.shardName)
 					return nil
 				case deletedID, ok := <-ch:
 					if !ok {
 						return nil
 					}
+					h.logger.WithFields(logrus.Fields{
+						"action":              "tombstone_reassign_neighbors_goroutine_deletedid_begin",
+						"class":               h.className,
+						"shard":               h.shardName,
+						"tombstones_in_cycle": deleteList.Len(),
+						"deletedId":           deletedID,
+					}).Infof("class %s: shard %s: in reassignNeighborsOf goroutine start of 'case deletedID'", h.className, h.shardName)
 					h.shardedNodeLocks.RLock(deletedID)
 					if uint64(size) < deletedID || h.nodes[deletedID] == nil {
 						h.shardedNodeLocks.RUnlock(deletedID)
 						continue
 					}
 					h.shardedNodeLocks.RUnlock(deletedID)
+					h.logger.WithFields(logrus.Fields{
+						"action":              "tombstone_reassign_neighbors_goroutine_deletedid_after_locked_section",
+						"class":               h.className,
+						"shard":               h.shardName,
+						"tombstones_in_cycle": deleteList.Len(),
+						"deletedId":           deletedID,
+					}).Infof("class %s: shard %s: in reassignNeighborsOf goroutine deletedID after locked section", h.className, h.shardName)
 					if h.getEntrypoint() != deletedID {
+						h.logger.WithFields(logrus.Fields{
+							"action":              "tombstone_reassign_neighbors_goroutine_before_reassign_neighbor",
+							"class":               h.className,
+							"shard":               h.shardName,
+							"tombstones_in_cycle": deleteList.Len(),
+							"deletedId":           deletedID,
+						}).Infof("class %s: shard %s: in reassignNeighborsOf goroutine deletedID before_reassign_neighbor", h.className, h.shardName)
 						if _, err := h.reassignNeighbor(deletedID, deleteList, breakCleanUpTombstonedNodes); err != nil {
 							h.logger.WithError(err).WithField("action", "hnsw_tombstone_cleanup_error").
 								Errorf("class %s: shard %s: reassign neighbor", h.className, h.shardName)
 						}
+						h.logger.WithFields(logrus.Fields{
+							"action":              "tombstone_reassign_neighbors_goroutine_after_reassign_neighbor",
+							"class":               h.className,
+							"shard":               h.shardName,
+							"tombstones_in_cycle": deleteList.Len(),
+							"deletedId":           deletedID,
+						}).Infof("class %s: shard %s: in reassignNeighborsOf goroutine deletedID after_reassign_neighbor", h.className, h.shardName)
 					}
 				}
 			}
