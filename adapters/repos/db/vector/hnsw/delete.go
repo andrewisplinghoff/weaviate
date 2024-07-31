@@ -624,10 +624,54 @@ func (h *hnsw) reassignNeighbor(
 	}).Infof("class %s: shard %s: in reassignNeighbor after metrics", h.className, h.shardName)
 
 	h.RLock()
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_acquire_hnsw_lock",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after acquire hnsw lock", h.className, h.shardName)
+
 	h.shardedNodeLocks.RLock(neighbor)
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_acquire_shardednodelocks_lock",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"neighbor":            neighbor,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after acquire shardedNodeLocks lock", h.className, h.shardName)
+
 	neighborNode := h.nodes[neighbor]
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_retrieve_neighbor_node",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"neighbor":            neighbor,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after retrieve neighbor node", h.className, h.shardName)
+
 	h.shardedNodeLocks.RUnlock(neighbor)
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_unlock_shardednodelocks_lock",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"neighbor":            neighbor,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after unlock shardedNodeLocks lock", h.className, h.shardName)
+
 	currentMaximumLayer := h.currentMaximumLayer
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_current_maximum_layer",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"neighbor":            neighbor,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after currentMaximumLayer", h.className, h.shardName)
+
 	h.RUnlock()
 
 	h.logger.WithFields(logrus.Fields{
