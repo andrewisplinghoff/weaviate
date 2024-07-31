@@ -598,11 +598,30 @@ func (h *hnsw) reassignNeighbor(
 	deleteList helpers.AllowList,
 	breakCleanUpTombstonedNodes breakCleanUpTombstonedNodesFunc,
 ) (ok bool, err error) {
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_before_break_cleanup_tombstoned_nodes",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor before breakCleanUpTombstonedNodesFunc", h.className, h.shardName)
 	if breakCleanUpTombstonedNodes() {
 		return false, nil
 	}
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_break_cleanup_tombstoned_nodes",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after breakCleanUpTombstonedNodesFunc", h.className, h.shardName)
 
 	h.metrics.TombstoneReassignNeighbor()
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_metrics",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after metrics", h.className, h.shardName)
 
 	h.RLock()
 	h.shardedNodeLocks.RLock(neighbor)
@@ -611,9 +630,23 @@ func (h *hnsw) reassignNeighbor(
 	currentMaximumLayer := h.currentMaximumLayer
 	h.RUnlock()
 
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_locked_section",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after locked section", h.className, h.shardName)
+
 	if neighborNode == nil || deleteList.Contains(neighborNode.id) {
 		return true, nil
 	}
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_neighbor_node_check",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after neighbor node check", h.className, h.shardName)
 
 	var neighborVec []float32
 	var compressorDistancer compressionhelpers.CompressorDistancer
@@ -622,6 +655,13 @@ func (h *hnsw) reassignNeighbor(
 	} else {
 		neighborVec, err = h.cache.Get(context.Background(), neighbor)
 	}
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_compressor_or_cache",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after compressor or cache", h.className, h.shardName)
 
 	if err != nil {
 		var e storobj.ErrNotFound
@@ -633,6 +673,12 @@ func (h *hnsw) reassignNeighbor(
 			return false, errors.Wrap(err, "get neighbor vec")
 		}
 	}
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_before_neighbor_node_lock",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor before neighborNode lock", h.className, h.shardName)
 	neighborNode.Lock()
 	neighborLevel := neighborNode.level
 	if !connectionsPointTo(neighborNode.connections, deleteList) {
@@ -641,17 +687,48 @@ func (h *hnsw) reassignNeighbor(
 		return true, nil
 	}
 	neighborNode.Unlock()
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_neighbor_node_unlock",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after neighborNode unlock", h.className, h.shardName)
 
 	neighborNode.markAsMaintenance()
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_mark_as_maintenance",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after mark as maintenance", h.className, h.shardName)
 
 	// the new recursive implementation no longer needs an entrypoint, so we can
 	// just pass this dummy value to make the neighborFinderConnector happy
 	dummyEntrypoint := uint64(0)
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_before_reconnect_neighbors_of",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor before reconnectNeighboursOf", h.className, h.shardName)
 	if err := h.reconnectNeighboursOf(neighborNode, dummyEntrypoint, neighborVec, compressorDistancer,
 		neighborLevel, currentMaximumLayer, deleteList); err != nil {
 		return false, errors.Wrap(err, "find and connect neighbors")
 	}
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_reconnect_neighbors_of",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor before reconnectNeighboursOf", h.className, h.shardName)
 	neighborNode.unmarkAsMaintenance()
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_reassign_neighbor_after_unmark_as_maintenance",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+	}).Infof("class %s: shard %s: in reassignNeighbor after unmarkAsMaintenance", h.className, h.shardName)
 
 	h.metrics.CleanedUp()
 	return true, nil
