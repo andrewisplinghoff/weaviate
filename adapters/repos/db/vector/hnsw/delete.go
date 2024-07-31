@@ -301,7 +301,24 @@ func (h *hnsw) cleanUpTombstonedNodes(shouldAbort cyclemanager.ShouldAbortCallba
 	} else if !ok {
 		return executed, nil
 	}
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_cleanup_after_reassign_neighbors",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+		"tombstones_total":    total_tombstones,
+	}).Infof("class %s: shard %s: in tombstone cleanup", h.className, h.shardName)
+
 	h.reassignNeighbor(h.getEntrypoint(), deleteList, breakCleanUpTombstonedNodes)
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_cleanup_after_reassign_entrypoint_neighbor",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+		"tombstones_total":    total_tombstones,
+	}).Infof("class %s: shard %s: in tombstone cleanup", h.className, h.shardName)
 
 	if ok, err := h.replaceDeletedEntrypoint(deleteList, breakCleanUpTombstonedNodes); err != nil {
 		return executed, err
@@ -309,11 +326,27 @@ func (h *hnsw) cleanUpTombstonedNodes(shouldAbort cyclemanager.ShouldAbortCallba
 		return executed, nil
 	}
 
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_cleanup_after_replace_deleted_entrypoint",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+		"tombstones_total":    total_tombstones,
+	}).Infof("class %s: shard %s: in tombstone cleanup", h.className, h.shardName)
+
 	if ok, err := h.removeTombstonesAndNodes(deleteList, breakCleanUpTombstonedNodes); err != nil {
 		return executed, err
 	} else if !ok {
 		return executed, nil
 	}
+
+	h.logger.WithFields(logrus.Fields{
+		"action":              "tombstone_cleanup_after_remove_tombstones_and_nodes",
+		"class":               h.className,
+		"shard":               h.shardName,
+		"tombstones_in_cycle": deleteList.Len(),
+		"tombstones_total":    total_tombstones,
+	}).Infof("class %s: shard %s: in tombstone cleanup", h.className, h.shardName)
 
 	if _, err := h.resetIfEmpty(); err != nil {
 		return executed, err
