@@ -86,10 +86,10 @@ func newNeighborFinderConnector(graph *hnsw, node *vertex, entryPointID uint64,
 
 func (n *neighborFinderConnector) Do() error {
 	n.graph.logger.WithFields(logrus.Fields{
-		"action":          "tombstone_reconnect_neighbors_of_after_new_neighbor_finder_connector",
+		"action":          "tombstone_neighbor_connections_do",
 		"targetLevel":     n.targetLevel,
 		"currentMaxLevel": n.currentMaxLevel,
-	}).Infof("in reassignNeighbor after newNeighborFinderConnector")
+	}).Infof("tombstone_neighbor_connections_do")
 	for level := min(n.targetLevel, n.currentMaxLevel); level >= 0; level-- {
 		err := n.doAtLevel(level)
 		if err != nil {
@@ -132,14 +132,35 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 
 	var pending []uint64
 	// lock the nodes slice
+
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "process_recursively_before_lock",
+		"level":  level,
+		"from":   from,
+	}).Infof("before n.graph.shardedNodeLocks.RLock(from)")
 	n.graph.shardedNodeLocks.RLock(from)
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "process_recursively_after_lock",
+		"level":  level,
+		"from":   from,
+	}).Infof("after n.graph.shardedNodeLocks.RLock(from)")
 	if uint64(len(n.graph.nodes)) < from || n.graph.nodes[from] == nil {
 		n.graph.handleDeletedNode(from)
 		n.graph.shardedNodeLocks.RUnlock(from)
 		return nil
 	}
 	// lock the node itself
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "process_recursively_before_lock",
+		"level":  level,
+		"from":   from,
+	}).Infof("before n.graph.nodes[from].Lock()")
 	n.graph.nodes[from].Lock()
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "process_recursively_after_lock",
+		"level":  level,
+		"from":   from,
+	}).Infof("after n.graph.nodes[from].Lock()")
 	if level >= len(n.graph.nodes[from].connections) {
 		n.graph.nodes[from].Unlock()
 		n.graph.shardedNodeLocks.RUnlock(from)
@@ -214,10 +235,26 @@ func (n *neighborFinderConnector) doAtLevel(level int) error {
 	if n.tombstoneCleanupNodes {
 		results = n.graph.pools.pqResults.GetMax(n.graph.efConstruction)
 
+		n.graph.logger.WithFields(logrus.Fields{
+			"action": "do_at_level_before_lock",
+			"level":  level,
+		}).Infof("before n.graph.pools.visitedListsLock.RLock() 1")
 		n.graph.pools.visitedListsLock.RLock()
+		n.graph.logger.WithFields(logrus.Fields{
+			"action": "do_at_level_after_lock",
+			"level":  level,
+		}).Infof("after n.graph.pools.visitedListsLock.RLock() 1")
 		visited := n.graph.pools.visitedLists.Borrow()
 		n.graph.pools.visitedListsLock.RUnlock()
+		n.graph.logger.WithFields(logrus.Fields{
+			"action": "do_at_level_before_lock",
+			"level":  level,
+		}).Infof("before n.node.Lock() 1")
 		n.node.Lock()
+		n.graph.logger.WithFields(logrus.Fields{
+			"action": "do_at_level_after_lock",
+			"level":  level,
+		}).Infof("after n.node.Lock() 1")
 		connections := make([]uint64, len(n.node.connections[level]))
 		copy(connections, n.node.connections[level])
 		n.node.Unlock()
@@ -239,13 +276,29 @@ func (n *neighborFinderConnector) doAtLevel(level int) error {
 			visited.Visit(id)
 			err := n.processRecursively(id, results, visited, level, top)
 			if err != nil {
+				n.graph.logger.WithFields(logrus.Fields{
+					"action": "do_at_level_before_lock",
+					"level":  level,
+				}).Infof("before n.graph.pools.visitedListsLock.RLock() 2")
 				n.graph.pools.visitedListsLock.RLock()
+				n.graph.logger.WithFields(logrus.Fields{
+					"action": "do_at_level_after_lock",
+					"level":  level,
+				}).Infof("after n.graph.pools.visitedListsLock.RLock() 2")
 				n.graph.pools.visitedLists.Return(visited)
 				n.graph.pools.visitedListsLock.RUnlock()
 				return err
 			}
 		}
+		n.graph.logger.WithFields(logrus.Fields{
+			"action": "do_at_level_before_lock",
+			"level":  level,
+		}).Infof("before n.graph.pools.visitedListsLock.RLock() 3")
 		n.graph.pools.visitedListsLock.RLock()
+		n.graph.logger.WithFields(logrus.Fields{
+			"action": "do_at_level_after_lock",
+			"level":  level,
+		}).Infof("after n.graph.pools.visitedListsLock.RLock() 3")
 		n.graph.pools.visitedLists.Return(visited)
 		n.graph.pools.visitedListsLock.RUnlock()
 		// use dynamic max connections only during tombstone cleanup
@@ -326,7 +379,15 @@ func (n *neighborFinderConnector) connectNeighborAtLevel(neighborID uint64,
 		return nil
 	}
 
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "connect_neighbor_at_level_before_lock",
+		"level":  level,
+	}).Infof("before neighbor.Lock()")
 	neighbor.Lock()
+	n.graph.logger.WithFields(logrus.Fields{
+		"action": "connect_neighbor_at_level_after_lock",
+		"level":  level,
+	}).Infof("after neighbor.Lock()")
 	defer neighbor.Unlock()
 	if level > neighbor.level {
 		// upgrade neighbor level if the level is out of sync due to a delete re-assign
