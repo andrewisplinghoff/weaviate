@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -1043,6 +1044,19 @@ func (b *Bucket) FlushAndSwitch() error {
 	}
 
 	if err := b.flushing.flush(); err != nil {
+		b.logger.WithField("action", "lsm_memtable_flush_error").
+			WithField("path", b.dir).
+			Errorf("b.Error during flushing.flush() 1: %w", err)
+		time.Sleep(10 * time.Second)
+		b.logger.WithField("action", "lsm_memtable_flush_error").
+			WithField("path", b.dir).
+			Errorf("b.Error during flushing.flush() 2: %w", err)
+		time.Sleep(10 * time.Second)
+		b.logger.WithField("action", "lsm_memtable_flush_error").
+			WithField("path", b.dir).
+			Errorf("b.Error during flushing.flush() 3: %w", err)
+		time.Sleep(10 * time.Second)
+		syscall.Kill(syscall.Getpid(), syscall.SIGQUIT)
 		return fmt.Errorf("flush: %w", err)
 	}
 
