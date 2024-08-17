@@ -130,10 +130,6 @@ func (c *cycleCallbackGroup) cycleCallbackSequential(shouldAbort ShouldAbortCall
 			c.Unlock()
 			continue
 		}
-		c.logger.WithFields(logrus.Fields{
-			"action":      "cyclemanager_exec",
-			"callback_id": callbackId,
-		}).Trace("executing callback")
 		// callback active, mark as running
 		runningCtx, cancel := context.WithCancel(context.Background())
 		meta.runningCtx = runningCtx
