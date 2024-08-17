@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"syscall"
 
 	"github.com/pkg/errors"
 )
@@ -136,6 +137,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
+		syscall.Kill(syscall.Getpid(), syscall.SIGQUIT)
 		return written, err
 	}
 
