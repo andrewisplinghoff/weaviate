@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -142,11 +143,12 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		if err2 != nil {
 			return written, fmt.Errorf("error %w while removing, %w while reading", err, err2)
 		}
+		lsofOut, lsofErr := exec.Command("lsof").Output()
 
 		time.Sleep(10 * time.Second)
 		err3 := os.RemoveAll(s.ScratchSpacePath)
 
-		return written, fmt.Errorf("error %w while removing, entries read successfully: %s, RemoveAll working after 10 secs: %w", err, strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"), err3)
+		return written, fmt.Errorf("error %w while removing, entries read successfully: %s, lsofOut: %s, lsofErr: %w, RemoveAll working after 10 secs: %w", err, strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"), lsofOut, lsofErr, err3)
 	}
 
 	return written, nil
