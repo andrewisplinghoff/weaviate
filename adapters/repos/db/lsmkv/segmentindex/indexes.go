@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -134,6 +135,8 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err := secondaryFD.Close(); err != nil {
 		return written, err
 	}
+
+	time.Sleep(1 * time.Second)
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
 		return written, err
