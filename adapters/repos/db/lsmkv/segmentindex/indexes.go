@@ -21,8 +21,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-
 	"github.com/pkg/errors"
+	"strings"
+	"time"
 )
 
 type Indexes struct {
@@ -152,7 +153,15 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
-		return written, err
+		entries, err2 := os.ReadDir(s.ScratchSpacePath)
+		if err2 != nil {
+			return written, fmt.Errorf("error %w while removing, %w while reading", err, err2)
+		}
+
+		time.Sleep(10 * time.Second)
+		err3 := os.RemoveAll(s.ScratchSpacePath)
+
+		return written, fmt.Errorf("error %w while removing, entries read successfully: %s, RemoveAll working after 10 secs: %w", err, strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"), err3)
 	}
 
 	return written, nil
