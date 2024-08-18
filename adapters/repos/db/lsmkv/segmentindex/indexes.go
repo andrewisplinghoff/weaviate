@@ -15,13 +15,12 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
-
-	"github.com/pkg/errors"
 )
 
 type Indexes struct {
@@ -57,6 +56,9 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	primaryFileName := filepath.Join(s.ScratchSpacePath, "primary")
+	if _, err := os.Stat(primaryFileName); err == nil {
+		return written, fmt.Errorf("primaryFileName %s already existed", primaryFileName)
+	}
 	primaryFD, err := os.Create(primaryFileName)
 	if err != nil {
 		return written, err
@@ -82,6 +84,9 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 
 	// secondaryIndicesBytes := bytes.NewBuffer(nil)
 	secondaryFileName := filepath.Join(s.ScratchSpacePath, "secondary")
+	if _, err := os.Stat(secondaryFileName); err == nil {
+		return written, fmt.Errorf("secondaryFileName %s already existed", secondaryFileName)
+	}
 	secondaryFD, err := os.Create(secondaryFileName)
 	if err != nil {
 		return written, err
@@ -136,7 +141,13 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		return written, err
 	}
 
-	time.Sleep(1 * time.Second)
+	if err := os.Remove(primaryFileName); err != nil {
+		return written, fmt.Errorf("error %w while removing primaryFileName %s", err, primaryFileName)
+	}
+
+	if err := os.Remove(secondaryFileName); err != nil {
+		return written, fmt.Errorf("error %w while removing secondaryFileName %s", err, secondaryFileName)
+	}
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
 		return written, err
