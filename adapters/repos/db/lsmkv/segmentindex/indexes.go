@@ -160,8 +160,10 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 
 		time.Sleep(10 * time.Second)
 		err3 := os.RemoveAll(s.ScratchSpacePath)
-
-		return written, fmt.Errorf("error %w while removing, entries read successfully: %s, RemoveAll working after 10 secs: %w", err, strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"), err3)
+		if err3 != nil {
+			return written, fmt.Errorf("error %w while removing, entries read successfully: %s, RemoveAll working after 10 secs: %w", err, strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"), err3)
+		}
+		return written, nil // Don't report error if second RemoveAll call was successful
 	}
 
 	return written, nil
