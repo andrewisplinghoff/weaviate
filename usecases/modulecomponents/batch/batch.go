@@ -170,6 +170,20 @@ func (b *Batch) batchWorker() {
 				if objCounter < len(job.texts) {
 					continue
 				}
+			} else {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("len_texts", len(texts)).
+					WithField("len_job_texts", len(job.texts)).
+					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					WithField("tokens", tokensInCurrentBatch+job.tokens[objCounter]).
+					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+					WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
+					WithField("max_tokens_per_batch", maxTokensPerBatch).
+					WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
+					Info("Not adding a new text to texts array")
 			}
 
 			// if a single object is larger than the current token limit we need to wait until the token limit refreshes
