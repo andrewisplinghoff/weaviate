@@ -229,7 +229,6 @@ func (b *Batch) batchWorker() {
 					WithField("len_texts", len(texts)).
 					WithField("start_of_first_text", []rune(texts[0])[:20]).
 					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
-					WithField("tokens", tokensInCurrentBatch+job.tokens[objCounter]).
 					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
 					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
 					WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
@@ -241,8 +240,6 @@ func (b *Batch) batchWorker() {
 					WithField("iter", iter).
 					WithField("objCounter", objCounter).
 					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
-					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
-					WithField("tokens", tokensInCurrentBatch+job.tokens[objCounter]).
 					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
 					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
 					WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
