@@ -129,6 +129,20 @@ func (b *Batch) batchWorker() {
 			}
 			objCounter++
 		}
+		if rateLimit.IsInitialized() {
+			b.logger.WithField("action", "batch_worker").
+				WithField("iter", iter).
+				WithField("len_job_texts", len(job.texts)).
+				WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+				WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+				WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
+				WithField("max_tokens_per_batch", maxTokensPerBatch).
+				WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
+				Info("Rate limit initialized")
+		} else {
+			b.logger.WithField("action", "batch_worker").
+				Info("Rate limit not initialized, seems that dummy requests did not help to do achieve that")
+		}
 
 		for objCounter < len(job.texts) {
 			iter += 1
@@ -214,12 +228,26 @@ func (b *Batch) batchWorker() {
 					WithField("objCounter", objCounter).
 					WithField("len_texts", len(texts)).
 					WithField("start_of_first_text", []rune(texts[0])[:20]).
+					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					WithField("tokens", tokensInCurrentBatch+job.tokens[objCounter]).
+					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+					WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
+					WithField("max_tokens_per_batch", maxTokensPerBatch).
+					WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
 					Info("Making a vectorizer request inside the loop")
 			} else {
 				b.logger.WithField("action", "batch_worker").
 					WithField("iter", iter).
 					WithField("objCounter", objCounter).
 					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					WithField("tokens", tokensInCurrentBatch+job.tokens[objCounter]).
+					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+					WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
+					WithField("max_tokens_per_batch", maxTokensPerBatch).
+					WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
 					Info("No texts, still calling makeRequest()")
 			}
 
