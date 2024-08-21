@@ -246,11 +246,11 @@ func (b *Batch) batchWorker() {
 
 		// in case we exit the loop without sending the last batch. This can happen when the last object is a skip or
 		// is too long
-		b.logger.WithField("action", "batch_worker").
-			WithField("len_texts", len(texts)).
-			WithField("start_of_first_text", []rune(texts[0])[:20]).
-			Info("Making a vectorizer request after the loop")
 		if len(texts) > 0 && objCounter == len(job.texts) {
+			b.logger.WithField("action", "batch_worker").
+				WithField("len_texts", len(texts)).
+				WithField("start_of_first_text", []rune(texts[0])[:20]).
+				Info("Making a vectorizer request after the loop")
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
 		}
 		rateLimitPerApiKey[job.apiKeyHash] = rateLimit
