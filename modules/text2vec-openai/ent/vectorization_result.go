@@ -12,6 +12,7 @@
 package ent
 
 import (
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,7 +22,7 @@ import (
 
 const dummyLimit = 10000000
 
-func GetRateLimitsFromHeader(header http.Header) *modulecomponents.RateLimits {
+func GetRateLimitsFromHeader(header http.Header, logger logrus.FieldLogger) *modulecomponents.RateLimits {
 	requestsReset, err := time.ParseDuration(header.Get("x-ratelimit-reset-requests"))
 	if err != nil {
 		requestsReset = 0
@@ -35,6 +36,17 @@ func GetRateLimitsFromHeader(header http.Header) *modulecomponents.RateLimits {
 	remainingRequests := getHeaderInt(header, "x-ratelimit-remaining-requests")
 	remainingTokens := getHeaderInt(header, "x-ratelimit-remaining-tokens")
 
+	logger.WithField("action", "batch_worker").
+		WithField("requestsReset", requestsReset).
+		WithField("tokensReset", tokensReset).
+		WithField("limitRequests", limitRequests).
+		WithField("limitTokens", limitTokens).
+		WithField("remainingRequests", remainingRequests).
+		WithField("remainingTokens", remainingTokens).
+		WithField("time_requests_reset", time.Now().Add(requestsReset)).
+		WithField("time_tokens_reset", time.Now().Add(tokensReset)).
+		Info("Initial rate limits from header")
+
 	// azure returns 0 as limit, make sure this does not block anything by setting a high value
 	if limitTokens == 0 && remainingTokens > 0 {
 		limitTokens = dummyLimit
@@ -42,6 +54,12 @@ func GetRateLimitsFromHeader(header http.Header) *modulecomponents.RateLimits {
 	if limitRequests == 0 && remainingRequests > 0 {
 		limitRequests = dummyLimit
 	}
+
+	logger.WithField("action", "batch_worker").
+		WithField("limitRequests", limitRequests).
+		WithField("limitTokens", limitTokens).
+		Info("After applying dummy limits")
+
 	return &modulecomponents.RateLimits{
 		LimitRequests:     limitRequests,
 		LimitTokens:       limitTokens,
