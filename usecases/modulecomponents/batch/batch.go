@@ -193,13 +193,24 @@ func (b *Batch) batchWorker() {
 			}
 
 			start := time.Now()
-			b.logger.WithField("action", "batch_worker").
-				WithField("iter", iter).
-				WithField("objCounter", objCounter).
-				WithField("len_texts", len(texts)).
-				WithField("start_of_first_text", []rune(texts[0])[:20]).
-				Info("Making a vectorizer request inside the loop")
+
+			if len(texts) > 0 {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("len_texts", len(texts)).
+					WithField("start_of_first_text", []rune(texts[0])[:20]).
+					Info("Making a vectorizer request inside the loop")
+			} else {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					Info("No texts, still calling makeRequest()")
+			}
+
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
+
 			batchTookInS = time.Since(start).Seconds()
 			if tokensInCurrentBatch > 0 {
 				timePerToken = batchTookInS / float64(tokensInCurrentBatch)
