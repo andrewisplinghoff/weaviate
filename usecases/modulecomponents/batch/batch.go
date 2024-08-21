@@ -62,6 +62,7 @@ func NewBatchVectorizer(client BatchClient, maxBatchTime time.Duration, maxObjec
 		maxObjectsPerBatch:        maxObjectsPerBatch,
 		maxTimePerVectorizerBatch: maxTimePerVectorizerBatch,
 		maxTokensPerBatch:         maxTokensPerBatch,
+		logger:                    logger,
 	}
 	enterrors.GoWrapper(func() { batch.batchWorker() }, logger)
 	return &batch
@@ -75,6 +76,7 @@ type Batch struct {
 	maxObjectsPerBatch        int
 	maxTimePerVectorizerBatch float64
 	maxTokensPerBatch         func(cfg moduletools.ClassConfig) int
+	logger                    logrus.FieldLogger
 }
 
 // batchWorker is a go routine that handles the communication with the vectorizer
@@ -108,12 +110,16 @@ func (b *Batch) batchWorker() {
 		tokensInCurrentBatch := 0
 		texts = texts[:0]
 		origIndex = origIndex[:0]
+		iter := 0
 
 		// If the user does not supply rate limits, and we do not have defaults for the provider we don't know the
 		// rate limits without a request => send a small one
 		for objCounter < len(job.texts) && rateLimit.IsInitialized() {
 			var err error
 			if !job.skipObject[objCounter] {
+				b.logger.WithField("action", "batch_worker").
+					WithField("objCounter", objCounter).
+					Info("Making a dummy request to determine rate limit")
 				err = b.makeRequest(job, job.texts[objCounter:objCounter+1], job.cfg, []int{objCounter}, rateLimit, job.tokens[objCounter])
 				if err != nil {
 					job.errs[objCounter] = err
@@ -125,6 +131,12 @@ func (b *Batch) batchWorker() {
 		}
 
 		for objCounter < len(job.texts) {
+			iter += 1
+			b.logger.WithField("action", "batch_worker").
+				WithField("iter", iter).
+				WithField("objCounter", objCounter).
+				WithField("start_of_first_job_text", []rune(job.texts[0])[:20]).
+				Info("Starting new iteration")
 			if job.ctx.Err() != nil {
 				for j := objCounter; j < len(job.texts); j++ {
 					if !job.skipObject[j] {
@@ -164,6 +176,10 @@ func (b *Batch) batchWorker() {
 			// enough to be able to handle the object. This assumes that the tokenLimit refreshes linearly which is true
 			// for openAI, but needs to be checked for other providers
 			if len(texts) == 0 && time.Until(rateLimit.ResetTokens) > 0 {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					Info("Token limit hit")
 				fractionOfTotalLimit := float32(job.tokens[objCounter]) / float32(rateLimit.LimitTokens)
 				sleepTime := time.Until(rateLimit.ResetTokens) * time.Duration(fractionOfTotalLimit)
 				if time.Since(job.startTime)+sleepTime < b.maxBatchTime {
@@ -177,6 +193,12 @@ func (b *Batch) batchWorker() {
 			}
 
 			start := time.Now()
+			b.logger.WithField("action", "batch_worker").
+				WithField("iter", iter).
+				WithField("objCounter", objCounter).
+				WithField("len_texts", len(texts)).
+				WithField("start_of_first_text", []rune(texts[0])[:20]).
+				Info("Making a vectorizer request inside the loop")
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
 			batchTookInS = time.Since(start).Seconds()
 			if tokensInCurrentBatch > 0 {
@@ -200,6 +222,10 @@ func (b *Batch) batchWorker() {
 			// not all request limits are included in "RemainingRequests" and "ResetRequests". For example, in the OPenAI
 			// free tier only the RPD limits are shown but not RPM
 			if rateLimit.RemainingRequests <= 0 && time.Until(rateLimit.ResetRequests) > 0 {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					Info("Request limit hit")
 				// if we need to wait more than MaxBatchTime for a reset we need to stop the batch to not produce timeouts
 				if time.Since(job.startTime)+time.Until(rateLimit.ResetRequests) > b.maxBatchTime {
 					for j := origIndex[0]; j < len(job.texts); j++ {
@@ -220,6 +246,10 @@ func (b *Batch) batchWorker() {
 
 		// in case we exit the loop without sending the last batch. This can happen when the last object is a skip or
 		// is too long
+		b.logger.WithField("action", "batch_worker").
+			WithField("len_texts", len(texts)).
+			WithField("start_of_first_text", []rune(texts[0])[:20]).
+			Info("Making a vectorizer request after the loop")
 		if len(texts) > 0 && objCounter == len(job.texts) {
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
 		}
