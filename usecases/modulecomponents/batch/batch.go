@@ -284,6 +284,17 @@ func (b *Batch) batchWorker() {
 
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
 
+			b.logger.WithField("action", "batch_worker").
+				WithField("iter", iter).
+				WithField("objCounter", objCounter).
+				WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+				WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+				WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+				WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
+				WithField("max_tokens_per_batch", maxTokensPerBatch).
+				WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
+				Info("After vectorizer request finished")
+
 			batchTookInS = time.Since(start).Seconds()
 			if tokensInCurrentBatch > 0 {
 				timePerToken = batchTookInS / float64(tokensInCurrentBatch)
@@ -293,6 +304,13 @@ func (b *Batch) batchWorker() {
 			batchesPerMinute := 61.0 / batchTookInS
 			if batchesPerMinute > float64(rateLimit.LimitRequests) {
 				sleepFor := time.Duration((60.0-batchTookInS*float64(rateLimit.LimitRequests))/float64(rateLimit.LimitRequests)) * time.Second
+
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("sleepFor", sleepFor).
+					WithField("limitRequests", rateLimit.LimitRequests).
+					Info("sleepFor batchesPerMinute > float64(rateLimit.LimitRequests)")
 				time.Sleep(sleepFor)
 
 				// adapt the batches per limit
@@ -300,6 +318,15 @@ func (b *Batch) batchWorker() {
 			}
 			if batchesPerMinute*float64(tokensInCurrentBatch) > float64(rateLimit.LimitTokens) {
 				sleepFor := batchTookInS * (batchesPerMinute*float64(tokensInCurrentBatch) - float64(rateLimit.LimitTokens)) / float64(rateLimit.LimitTokens)
+
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("sleepFor", sleepFor).
+					WithField("batchesPerMinute", batchesPerMinute).
+					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					WithField("limitTokens", rateLimit.LimitTokens).
+					Info("sleepFor batchesPerMinute*float64(tokensInCurrentBatch) > float64(rateLimit.LimitTokens)")
 				time.Sleep(time.Duration(sleepFor * float64(time.Second)))
 			}
 
