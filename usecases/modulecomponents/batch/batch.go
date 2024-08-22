@@ -167,6 +167,13 @@ func (b *Batch) batchWorker() {
 			}
 
 			if job.tokens[objCounter] > rateLimit.LimitTokens || job.tokens[objCounter] > maxTokensPerBatch {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("tokens", job.tokens[objCounter]).
+					WithField("ratelimit_limit_tokens", rateLimit.LimitTokens).
+					WithField("max_tokens_per_batch", maxTokensPerBatch).
+					Info("Text too long for vectorization, returning error")
 				job.errs[objCounter] = fmt.Errorf("text too long for vectorization")
 				objCounter++
 				continue
