@@ -365,6 +365,15 @@ func (b *Batch) batchWorker() {
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
 		}
 		rateLimitPerApiKey[job.apiKeyHash] = rateLimit
+		b.logger.WithField("action", "batch_worker").
+			WithField("len_texts", len(texts)).
+			WithField("objCounter", objCounter).
+			WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+			WithField("ratelimit_remaining_requests", rateLimit.RemainingRequests).
+			WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+			WithField("limitTokens", rateLimit.LimitTokens).
+			WithField("limitRequests", rateLimit.LimitRequests).
+			Info("Marking job as done")
 		job.wg.Done()
 	}
 }
