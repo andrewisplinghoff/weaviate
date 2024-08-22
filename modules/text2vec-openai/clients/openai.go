@@ -192,7 +192,7 @@ func (v *client) vectorize(ctx context.Context, input []string, model string, co
 		texts[i] = resBody.Data[i].Object
 		embeddings[i] = resBody.Data[i].Embedding
 		if resBody.Data[i].Error != nil {
-			openAIerror[i] = v.getError(res.StatusCode, resBody.Data[i].Error, config.IsAzure)
+			openAIerror[i] = v.getError(res.StatusCode, resBody.Data[i].Error, config.IsAzure, res.Header)
 		}
 	}
 
