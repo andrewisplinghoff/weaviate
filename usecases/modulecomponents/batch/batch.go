@@ -224,6 +224,15 @@ func (b *Batch) batchWorker() {
 				}
 
 				sleepTime := timeUntilFullReset * time.Duration(fractionOfTotalLimit)
+
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("timeUntilFullReset", timeUntilFullReset).
+					WithField("fractionOfTotalLimit", fractionOfTotalLimit).
+					WithField("sleepTime", sleepTime).
+					Info("Token limit hit")
+
 				if time.Since(job.startTime)+sleepTime < b.maxBatchTime {
 					time.Sleep(sleepTime)
 					rateLimit.RemainingTokens += int(float32(rateLimit.LimitTokens) * fractionOfTotalLimit)

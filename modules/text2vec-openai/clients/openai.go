@@ -181,7 +181,7 @@ func (v *client) vectorize(ctx context.Context, input []string, model string, co
 	}
 
 	if res.StatusCode != 200 || resBody.Error != nil {
-		return nil, nil, v.getError(res.StatusCode, resBody.Error, config.IsAzure)
+		return nil, nil, v.getError(res.StatusCode, resBody.Error, config.IsAzure, res.Header)
 	}
 	rateLimit := ent.GetRateLimitsFromHeader(res.Header, v.logger)
 
@@ -212,15 +212,15 @@ func (v *client) buildURL(ctx context.Context, config ent.VectorizationConfig) (
 	return v.buildUrlFn(baseURL, resourceName, deploymentID, apiVersion, isAzure)
 }
 
-func (v *client) getError(statusCode int, resBodyError *openAIApiError, isAzure bool) error {
+func (v *client) getError(statusCode int, resBodyError *openAIApiError, isAzure bool, header http.Header) error {
 	endpoint := "OpenAI API"
 	if isAzure {
 		endpoint = "Azure OpenAI API"
 	}
 	if resBodyError != nil {
-		return fmt.Errorf("connection to: %s failed with status: %d error: %v", endpoint, statusCode, resBodyError.Message)
+		return fmt.Errorf("connection to: %s failed with status: %d error: %v header: %s", endpoint, statusCode, resBodyError.Message, fmt.Sprintf("%v", header))
 	}
-	return fmt.Errorf("connection to: %s failed with status: %d", endpoint, statusCode)
+	return fmt.Errorf("connection to: %s failed with status: %d header: %s", endpoint, statusCode, header)
 }
 
 func (v *client) getEmbeddingsRequest(input []string, model string, isAzure bool, dimensions *int64) embeddingsRequest {
