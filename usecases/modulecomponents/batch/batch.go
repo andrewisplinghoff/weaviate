@@ -189,6 +189,11 @@ func (b *Batch) batchWorker() {
 				texts = append(texts, text)
 				origIndex = append(origIndex, objCounter)
 				objCounter++
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("len_texts", len(texts)).
+					Info("Added new item to texts array")
 				if objCounter < len(job.texts) {
 					continue
 				}
@@ -215,6 +220,7 @@ func (b *Batch) batchWorker() {
 				b.logger.WithField("action", "batch_worker").
 					WithField("iter", iter).
 					WithField("objCounter", objCounter).
+					WithField("len_texts", len(texts)).
 					Info("Token limit hit")
 
 				fractionOfTotalLimit := float32(job.tokens[objCounter]) / float32(rateLimit.LimitTokens)
@@ -242,7 +248,8 @@ func (b *Batch) batchWorker() {
 					WithField("timeUntilFullReset", timeUntilFullReset).
 					WithField("fractionOfTotalLimit", fractionOfTotalLimit).
 					WithField("sleepTime", sleepTime).
-					Info("Token limit hit")
+					WithField("len_texts", len(texts)).
+					Info("Sleeping to wait for token refresh")
 
 				if time.Since(job.startTime)+sleepTime < b.maxBatchTime {
 					time.Sleep(sleepTime)
