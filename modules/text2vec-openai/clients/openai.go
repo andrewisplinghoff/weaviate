@@ -180,10 +180,11 @@ func (v *client) vectorize(ctx context.Context, input []string, model string, co
 		return nil, nil, errors.Wrap(err, "unmarshal response body")
 	}
 
-	if res.StatusCode != 200 || resBody.Error != nil {
-		return nil, nil, v.getError(res.StatusCode, resBody.Error, config.IsAzure, res.Header)
-	}
 	rateLimit := ent.GetRateLimitsFromHeader(res.Header, v.logger)
+
+	if res.StatusCode != 200 || resBody.Error != nil {
+		return nil, rateLimit, v.getError(res.StatusCode, resBody.Error, config.IsAzure, res.Header)
+	}
 
 	texts := make([]string, len(resBody.Data))
 	embeddings := make([][]float32, len(resBody.Data))

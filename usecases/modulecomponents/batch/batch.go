@@ -14,6 +14,7 @@ package batch
 import (
 	"context"
 	"fmt"
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -223,7 +224,10 @@ func (b *Batch) batchWorker() {
 					timeUntilFullReset = time.Duration(1 * float64(time.Minute))
 				}
 
-				sleepTime := timeUntilFullReset * time.Duration(fractionOfTotalLimit)
+				// If we are waiting for very small times there is a likely chance the token limit was not refreshed
+				// yet, so wait for a minimum of one second.
+				minSleepTime := time.Duration(1 * float64(time.Second))
+				sleepTime := time.Duration(math.Max(float64(timeUntilFullReset*time.Duration(fractionOfTotalLimit)), float64(minSleepTime)))
 
 				b.logger.WithField("action", "batch_worker").
 					WithField("iter", iter).
