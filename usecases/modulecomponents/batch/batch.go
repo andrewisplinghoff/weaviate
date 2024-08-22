@@ -282,7 +282,27 @@ func (b *Batch) batchWorker() {
 					Info("No texts, still calling makeRequest()")
 			}
 
-			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
+			err := b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
+			if err != nil {
+				b.logger.WithField("action", "batch_worker").
+					WithField("iter", iter).
+					WithField("objCounter", objCounter).
+					WithField("len_texts", len(texts)).
+					WithField("start_of_first_text", []rune(texts[0])[:20]).
+					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
+					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
+					WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
+					WithField("max_tokens_per_batch", maxTokensPerBatch).
+					WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
+					WithError(err).
+					Error("Request to vectorizer failed")
+			}
+
+			batchTookInS = time.Since(start).Seconds()
+			if tokensInCurrentBatch > 0 {
+				timePerToken = batchTookInS / float64(tokensInCurrentBatch)
+			}
 
 			b.logger.WithField("action", "batch_worker").
 				WithField("iter", iter).
@@ -293,12 +313,10 @@ func (b *Batch) batchWorker() {
 				WithField("time_until_ratelimit_reset_tokens", time.Until(rateLimit.ResetTokens)).
 				WithField("max_tokens_per_batch", maxTokensPerBatch).
 				WithField("maxTimePerVectorizerBatch", b.maxTimePerVectorizerBatch).
+				WithField("batchTookInS", batchTookInS).
+				WithField("tokensInCurrentBatch", tokensInCurrentBatch).
+				WithField("timePerToken", timePerToken).
 				Info("After vectorizer request finished")
-
-			batchTookInS = time.Since(start).Seconds()
-			if tokensInCurrentBatch > 0 {
-				timePerToken = batchTookInS / float64(tokensInCurrentBatch)
-			}
 
 			// in case of low rate limits we should not send the next batch immediately but sleep a bit
 			batchesPerMinute := 61.0 / batchTookInS
