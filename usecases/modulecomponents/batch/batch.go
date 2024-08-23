@@ -80,6 +80,14 @@ type Batch struct {
 	logger                    logrus.FieldLogger
 }
 
+func firstNRunes(s string, n int) []rune {
+	runes := []rune(s)
+	if len(runes) < n {
+		return runes
+	}
+	return runes[:n]
+}
+
 // batchWorker is a go routine that handles the communication with the vectorizer
 //
 // On the high level it has the following steps:
@@ -150,7 +158,7 @@ func (b *Batch) batchWorker() {
 			b.logger.WithField("action", "batch_worker").
 				WithField("iter", iter).
 				WithField("objCounter", objCounter).
-				WithField("start_of_first_job_text", []rune(job.texts[0])[:20]).
+				WithField("start_of_first_job_text", string(firstNRunes(job.texts[0], 20))).
 				Info("Starting new iteration")
 			if job.ctx.Err() != nil {
 				for j := objCounter; j < len(job.texts); j++ {
@@ -268,7 +276,7 @@ func (b *Batch) batchWorker() {
 					WithField("iter", iter).
 					WithField("objCounter", objCounter).
 					WithField("len_texts", len(texts)).
-					WithField("start_of_first_text", []rune(texts[0])[:20]).
+					WithField("start_of_first_text", string(firstNRunes(texts[0], 20))).
 					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
 					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
 					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
@@ -295,7 +303,7 @@ func (b *Batch) batchWorker() {
 					WithField("iter", iter).
 					WithField("objCounter", objCounter).
 					WithField("len_texts", len(texts)).
-					WithField("start_of_first_text", []rune(texts[0])[:20]).
+					WithField("start_of_first_text", string(firstNRunes(texts[0], 20))).
 					WithField("tokensInCurrentBatch", tokensInCurrentBatch).
 					WithField("ratelimit_remaining_tokens", rateLimit.RemainingTokens).
 					WithField("ratelimit_reset_tokens", rateLimit.ResetTokens).
@@ -385,7 +393,7 @@ func (b *Batch) batchWorker() {
 		if len(texts) > 0 && objCounter == len(job.texts) {
 			b.logger.WithField("action", "batch_worker").
 				WithField("len_texts", len(texts)).
-				WithField("start_of_first_text", []rune(texts[0])[:20]).
+				WithField("start_of_first_text", string(firstNRunes(texts[0], 20))).
 				Info("Making a vectorizer request after the loop")
 			_ = b.makeRequest(job, texts, job.cfg, origIndex, rateLimit, tokensInCurrentBatch)
 		}
