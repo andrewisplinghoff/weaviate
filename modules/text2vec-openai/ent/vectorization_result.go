@@ -25,7 +25,7 @@ const dummyLimit = 10000000
 func GetRateLimitsFromHeader(header http.Header, logger logrus.FieldLogger) *modulecomponents.RateLimits {
 	requestsReset, err := time.ParseDuration(header.Get("x-ratelimit-reset-requests"))
 	if err != nil {
-		requestsReset := time.Duration(getHeaderInt(header, "x-ratelimit-reset-requests")) * time.Second
+		requestsReset = time.Duration(getHeaderInt(header, "x-ratelimit-reset-requests")) * time.Second
 		logger.WithField("action", "batch_worker").
 			WithField("requestsReset", requestsReset).
 			Info("requestsReset was not a duration, interpreted as number of seconds")
@@ -35,7 +35,7 @@ func GetRateLimitsFromHeader(header http.Header, logger logrus.FieldLogger) *mod
 	}
 	tokensReset, err := time.ParseDuration(header.Get("x-ratelimit-reset-tokens"))
 	if err != nil {
-		tokensReset := time.Duration(getHeaderInt(header, "x-ratelimit-reset-tokens")) * time.Second
+		tokensReset = time.Duration(getHeaderInt(header, "x-ratelimit-reset-tokens")) * time.Second
 		logger.WithField("action", "batch_worker").
 			WithField("tokensReset", tokensReset).
 			Info("tokensReset was not a duration, interpreted as number of seconds")
