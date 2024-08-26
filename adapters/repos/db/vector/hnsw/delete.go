@@ -461,7 +461,7 @@ LOOP:
 		}
 		select {
 		case ch <- uint64(i):
-			if i%1_000_000 == 0 {
+			if i%250 == 0 {
 				// the interval of 1M is rather arbitrary, but if we have less than 1M
 				// nodes in the graph tombstones cleanup should be so fast, we don't
 				// need to log the progress.
