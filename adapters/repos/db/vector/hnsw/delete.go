@@ -421,7 +421,12 @@ func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTom
 	ch := make(chan uint64)
 	var cancelled atomic.Bool
 
-	for i := 0; i < tombstoneDeletionConcurrency(); i++ {
+	concurrency := tombstoneDeletionConcurrency()
+	h.logger.WithField("action", "hnsw_tombstone_cleanup").
+		WithField("concurrency", concurrency).
+		Debugf("class %s: shard %s: In reassignNeighborsOf before starting goroutines", h.className, h.shardName)
+
+	for i := 0; i < concurrency; i++ {
 		g.Go(func() error {
 			for {
 				if breakCleanUpTombstonedNodes() {
