@@ -307,7 +307,11 @@ func (h *hnsw) cleanUpTombstonedNodes(shouldAbort cyclemanager.ShouldAbortCallba
 	} else if !ok {
 		return executed, nil
 	}
-	h.reassignNeighbor(h.getEntrypoint(), deleteList, breakCleanUpTombstonedNodes)
+
+	if _, err := h.reassignNeighbor(h.getEntrypoint(), deleteList, breakCleanUpTombstonedNodes); err != nil {
+		h.logger.WithError(err).WithField("action", "hnsw_tombstone_cleanup_error").
+			Errorf("class %s: shard %s: reassign neighbor entrypoint", h.className, h.shardName)
+	}
 
 	if ok, err := h.replaceDeletedEntrypoint(deleteList, breakCleanUpTombstonedNodes); err != nil {
 		return executed, err
