@@ -24,11 +24,13 @@ const dummyLimit = 10000000
 func GetRateLimitsFromHeader(header http.Header) *modulecomponents.RateLimits {
 	requestsReset, err := time.ParseDuration(header.Get("x-ratelimit-reset-requests"))
 	if err != nil {
-		requestsReset = 0
+		// Azure OpenAI provides the number of seconds to wait without a unit when the limit was hit.
+		// If the header is not present at all, this will result in 0.
+		requestsReset = time.Duration(getHeaderInt(header, "x-ratelimit-reset-requests")) * time.Second
 	}
 	tokensReset, err := time.ParseDuration(header.Get("x-ratelimit-reset-tokens"))
 	if err != nil {
-		tokensReset = 0
+		tokensReset = time.Duration(getHeaderInt(header, "x-ratelimit-reset-tokens")) * time.Second
 	}
 	limitRequests := getHeaderInt(header, "x-ratelimit-limit-requests")
 	limitTokens := getHeaderInt(header, "x-ratelimit-limit-tokens")

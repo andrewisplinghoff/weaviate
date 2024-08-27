@@ -180,10 +180,14 @@ func (v *client) vectorize(ctx context.Context, input []string, model string, co
 		return nil, nil, errors.Wrap(err, "unmarshal response body")
 	}
 
-	if res.StatusCode != 200 || resBody.Error != nil {
-		return nil, nil, v.getError(res.StatusCode, resBody.Error, config.IsAzure)
-	}
 	rateLimit := ent.GetRateLimitsFromHeader(res.Header)
+
+	if res.StatusCode != 200 || resBody.Error != nil {
+		if res.StatusCode != 200 && res.StatusCode != 429 {
+			rateLimit = nil // Do not update rate limit for unexpected status codes (depending on what went wrong, there might not be any rate limit headers provided)
+		}
+		return nil, rateLimit, v.getError(res.StatusCode, resBody.Error, config.IsAzure)
+	}
 
 	texts := make([]string, len(resBody.Data))
 	embeddings := make([][]float32, len(resBody.Data))
