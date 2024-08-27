@@ -291,9 +291,22 @@ func (b *Batch) sendBatch(job BatchJob, objCounter int, rateLimit *modulecompone
 		// if a single object is larger than the current token limit we need to wait until the token limit refreshes
 		// enough to be able to handle the object. This assumes that the tokenLimit refreshes linearly which is true
 		// for openAI, but needs to be checked for other providers
-		if len(texts) == 0 && time.Until(rateLimit.ResetTokens) > 0 {
+		if len(texts) == 0 {
 			fractionOfTotalLimit := float32(job.tokens[objCounter]) / float32(rateLimit.LimitTokens)
-			sleepTime := time.Until(rateLimit.ResetTokens) * time.Duration(fractionOfTotalLimit)
+			var timeUntilFullReset time.Duration
+			if time.Until(rateLimit.ResetTokens) > 0 {
+				timeUntilFullReset = time.Until(rateLimit.ResetTokens)
+			} else {
+				// Azure OpenAI does not provide the x-ratelimit-reset-tokens header which would allow calculating
+				// how long we have to wait. Worst case for the full reset is one minute (if we were fully drained).
+				// Since there are not enough tokens left for performing the next vectorization, we are probably
+				// close to that situation. Without knowing the TPM limit we cannot come up with a better estimate.
+				// Note that the `rateLimit.LimitTokens` is set to a dummy value in case of Azure OpenAI. That dummy
+				// value was chosen rather low, so we will typically wait longer than required below.
+				timeUntilFullReset = time.Duration(1 * float64(time.Minute))
+			}
+
+			sleepTime := timeUntilFullReset * time.Duration(fractionOfTotalLimit)
 			if time.Since(job.startTime)+sleepTime < b.maxBatchTime {
 				time.Sleep(sleepTime)
 				rateLimit.RemainingTokens += int(float32(rateLimit.LimitTokens) * fractionOfTotalLimit)
