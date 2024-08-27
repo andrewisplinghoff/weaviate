@@ -89,6 +89,17 @@ func TestBatch(t *testing.T) {
 			{Class: "Car", Properties: map[string]interface{}{"test": "skipped"}},
 			{Class: "Car", Properties: map[string]interface{}{"test": "all works"}},
 		}, skip: []bool{false, false, false, false, true, false}},
+		{name: "azure out of tokens at start", objects: []*models.Object{
+			{Class: "Car", Properties: map[string]interface{}{"test": "azure_429_too_many_requests"}}, // simulate that the quota limit was reached already before and we get an error (e.g. from Azure OpenAI)
+			{Class: "Car", Properties: map[string]interface{}{"test": "working request"}},
+		}, skip: []bool{false, false}, wantErrors: map[int]error{0: fmt.Errorf("429 Too Many Requests")}},
+		{name: "azure out of tokens during batch", objects: []*models.Object{
+			{Class: "Car", Properties: map[string]interface{}{"test": "azure_tokens 35"}}, // set azure limit without total Limit
+			{Class: "Car", Properties: map[string]interface{}{"test": "long long long long"}},
+			{Class: "Car", Properties: map[string]interface{}{"test": "azure_tokens 0"}},              // simulate token limit hit
+			{Class: "Car", Properties: map[string]interface{}{"test": "azure_429_too_many_requests"}}, // if we did not wait not long enough or some other application used up the quota
+			{Class: "Car", Properties: map[string]interface{}{"test": "working request"}},
+		}, skip: []bool{false, false, false, false, false}, wantErrors: map[int]error{3: fmt.Errorf("429 Too Many Requests")}},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {

@@ -65,7 +65,7 @@ func (c *fakeBatchClient) Vectorize(ctx context.Context,
 
 		if text[i] == "azure_429_too_many_requests" {
 			header := make(http.Header)
-			header.Add("x-ratelimit-reset-tokens", "10") // Meaning tokens will be reset in one second
+			header.Add("x-ratelimit-reset-tokens", "1") // Meaning tokens will be reset in one second
 			rateLimit = ent.GetRateLimitsFromHeader(header)
 			errors[i] = fmt.Errorf("429 Too Many Requests")
 		}
