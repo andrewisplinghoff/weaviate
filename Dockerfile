@@ -5,7 +5,7 @@
 ###############################################################################
 # Base build image
 FROM golang:1.22-alpine AS build_base
-RUN apk add bash ca-certificates git gcc g++ libc-dev
+RUN apk add bash procps ca-certificates git gcc g++ libc-dev
 WORKDIR /go/src/github.com/weaviate/weaviate
 ENV GO111MODULE=on
 # Populate the module cache based on the go.{mod,sum} files.
