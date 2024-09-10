@@ -279,6 +279,8 @@ func (h *hnsw) cleanUpTombstonedNodes(shouldAbort cyclemanager.ShouldAbortCallba
 	}
 
 	executed := false
+
+	n.graph.logger.Debugf("before copyTombstonesToAllowList\n")
 	ok, deleteList := h.copyTombstonesToAllowList(breakCleanUpTombstonedNodes)
 	if !ok {
 		return executed, nil
@@ -302,19 +304,23 @@ func (h *hnsw) cleanUpTombstonedNodes(shouldAbort cyclemanager.ShouldAbortCallba
 	}).Infof("class %s: shard %s: starting tombstone cleanup", h.className, h.shardName)
 
 	executed = true
+	n.graph.logger.Debugf("before reassignNeighborsOf\n")
 	if ok, err := h.reassignNeighborsOf(deleteList, breakCleanUpTombstonedNodes); err != nil {
 		return executed, err
 	} else if !ok {
 		return executed, nil
 	}
+	n.graph.logger.Debugf("before reassignNeighbor\n")
 	h.reassignNeighbor(h.getEntrypoint(), deleteList, breakCleanUpTombstonedNodes)
 
+	n.graph.logger.Debugf("before replaceDeletedEntrypoint\n")
 	if ok, err := h.replaceDeletedEntrypoint(deleteList, breakCleanUpTombstonedNodes); err != nil {
 		return executed, err
 	} else if !ok {
 		return executed, nil
 	}
 
+	n.graph.logger.Debugf("before removeTombstonesAndNodes\n")
 	if ok, err := h.removeTombstonesAndNodes(deleteList, breakCleanUpTombstonedNodes); err != nil {
 		return executed, err
 	} else if !ok {
@@ -439,10 +445,12 @@ func (h *hnsw) reassignNeighborsOf(deleteList helpers.AllowList, breakCleanUpTom
 					}
 					h.shardedNodeLocks.RUnlock(deletedID)
 					if h.getEntrypoint() != deletedID {
+						n.graph.logger.Debugf("before reassignNeighbor call in reassignNeighborsOf deletedID=%d\n", deletedID)
 						if _, err := h.reassignNeighbor(deletedID, deleteList, breakCleanUpTombstonedNodes); err != nil {
 							h.logger.WithError(err).WithField("action", "hnsw_tombstone_cleanup_error").
 								Errorf("class %s: shard %s: reassign neighbor", h.className, h.shardName)
 						}
+						n.graph.logger.Debugf("after reassignNeighbor call in reassignNeighborsOf deletedID=%d\n", deletedID)
 					}
 				}
 			}

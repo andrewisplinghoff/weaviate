@@ -15,6 +15,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -112,7 +114,29 @@ func (n *neighborFinderConnector) processNode(id uint64) (float32, error) {
 	return dist, nil
 }
 
+func getCallStackLength() int {
+	stack := string(debug.Stack())
+	stackLines := strings.Split(stack, "\n")
+	funcCount := 0
+
+	for _, line := range stackLines {
+		if strings.HasPrefix(line, "\t") {
+			funcCount++
+		}
+	}
+
+	return funcCount
+}
+
 func (n *neighborFinderConnector) processRecursively(from uint64, results *priorityqueue.Queue[any], visited visited.ListSet, level, top int) error {
+	n.graph.logger.Debugf("from=%d n.denyList.Len()=%d call stack length: %d\n", from, n.denyList.Len(), getCallStackLength())
+
+	//if n.denyList. != nil {
+	//	n.graph.logger.Debugf("len(n.denyList.bm.data)=%d call stack length: %d\n", len(n.denyList.bm.data), getCallStackLength())
+	//} else {
+	//	n.graph.logger.Debugf("n.denyList.bm==nil call stack length: %d\n", len(n.denyList.bm.data), getCallStackLength())
+	//}
+
 	if top <= 0 {
 		return nil
 	}
@@ -147,9 +171,13 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 			continue
 		}
 		visited.Visit(id)
+		n.graph.logger.Debugf("processRecursively adding to visited id=%d\n", id)
 		if n.denyList.Contains(id) {
+			n.graph.logger.Debugf("from=%d id=%d was in denyList, putting into pending call stack length: %d\n", from, id, getCallStackLength())
 			pending = append(pending, id)
 			continue
+		} else {
+			n.graph.logger.Debugf("from=%d id=%d was not in denyList, processing call stack length: %d\n", from, id, getCallStackLength())
 		}
 
 		dist, err := n.processNode(id)
@@ -169,6 +197,7 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 			results.Insert(id, dist)
 		}
 	}
+	n.graph.logger.Debugf("from=%d len(pending)=%d call stack length: %d\n", from, len(pending), getCallStackLength())
 	for _, id := range pending {
 		if results.Len() >= top {
 			dist, err := n.processNode(id)
@@ -184,6 +213,7 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 				continue
 			}
 		}
+		n.graph.logger.Debugf("making recursive call from=%d id=%d level=%d top=%d call stack length: %d\n", from, id, level, top, getCallStackLength())
 		err := n.processRecursively(id, results, visited, level, top)
 		if err != nil {
 			return err
@@ -193,6 +223,7 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 }
 
 func (n *neighborFinderConnector) doAtLevel(level int) error {
+	n.graph.logger.Debugf("at start of doAtLevel level=%d\n", level)
 	before := time.Now()
 
 	var results *priorityqueue.Queue[any]
@@ -211,11 +242,13 @@ func (n *neighborFinderConnector) doAtLevel(level int) error {
 		copy(connections, n.node.connections[level])
 		n.node.Unlock()
 		visited.Visit(n.node.id)
+		n.graph.logger.Debugf("adding to visited n.node.id=%d level=%d\n", n.node.id, level)
 		top := n.graph.efConstruction
 		var pending []uint64 = nil
 
 		for _, id := range connections {
 			visited.Visit(id)
+			n.graph.logger.Debugf("doAtLevel adding to visited id=%d level=%d\n", id, level)
 			if n.denyList.Contains(id) {
 				pending = append(pending, id)
 				continue
@@ -225,7 +258,6 @@ func (n *neighborFinderConnector) doAtLevel(level int) error {
 			total++
 		}
 		for _, id := range pending {
-			visited.Visit(id)
 			err := n.processRecursively(id, results, visited, level, top)
 			if err != nil {
 				n.graph.pools.visitedListsLock.RLock()
