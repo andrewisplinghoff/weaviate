@@ -15,7 +15,9 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,14 +120,23 @@ func getCallStackLength() int {
 	stack := string(debug.Stack())
 	stackLines := strings.Split(stack, "\n")
 	funcCount := 0
+	elidedFrames := 0
+
+	// Regular expression to match elided frames
+	elidedFramesRegex := regexp.MustCompile(`\.\.\.(\d+) frames elided\.\.\.`)
 
 	for _, line := range stackLines {
 		if strings.HasPrefix(line, "\t") {
 			funcCount++
 		}
+		if matches := elidedFramesRegex.FindStringSubmatch(line); matches != nil {
+			if count, err := strconv.Atoi(matches[1]); err == nil {
+				elidedFrames += count
+			}
+		}
 	}
 
-	return funcCount
+	return funcCount + elidedFrames
 }
 
 func (n *neighborFinderConnector) processRecursively(from uint64, results *priorityqueue.Queue[any], visited visited.ListSet, level, top int) error {
