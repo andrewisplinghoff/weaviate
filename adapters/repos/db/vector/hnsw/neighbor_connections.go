@@ -208,7 +208,7 @@ func (n *neighborFinderConnector) processRecursively(from uint64, results *prior
 			results.Insert(id, dist)
 		}
 	}
-	n.graph.logger.Debugf("from=%d len(pending)=%d call stack length: %d\n", from, len(pending), getCallStackLength())
+	n.graph.logger.Debugf("from=%d len(connections) len(pending)=%d call stack length: %d\n", from, len(connections), len(pending), getCallStackLength())
 	for _, id := range pending {
 		if results.Len() >= top {
 			dist, err := n.processNode(id)
