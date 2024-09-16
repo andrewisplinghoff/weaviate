@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/weaviate/weaviate/entities/models"
 )
 
@@ -64,11 +66,11 @@ type Monitor struct {
 
 // Refresh retrieves the current memory stats from the runtime and stores them
 // in the local cache
-func (m *Monitor) Refresh(updateMappings bool) {
+func (m *Monitor) Refresh(updateMappings bool, logger logrus.FieldLogger) {
 	m.obtainCurrentUsage()
 	m.updateLimit()
 	if updateMappings {
-		m.obtainCurrentMappings()
+		m.obtainCurrentMappings(logger)
 	}
 }
 
@@ -177,33 +179,35 @@ func (m *Monitor) obtainCurrentUsage() {
 	m.setUsed(m.metricsReader())
 }
 
-func (m *Monitor) obtainCurrentMappings() {
-	used := getCurrentMappings()
+func (m *Monitor) obtainCurrentMappings(logger logrus.FieldLogger) {
+	used := getCurrentMappings(logger)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.usedMappings = used
 }
 
-func getCurrentMappings() int64 {
+func getCurrentMappings(logger logrus.FieldLogger) int64 {
 	switch runtime.GOOS {
 	case "linux":
-		return currentMappingsCommand()
+		return currentMappingsCommand(logger)
 	default:
 		return 0
 	}
 }
 
-func currentMappingsCommand() int64 {
+func currentMappingsCommand(logger logrus.FieldLogger) int64 {
 	cmd := exec.Command("wc", "-l", fmt.Sprintf("/proc/%s/maps", strconv.Itoa(os.Getpid()))) // print mappings
 
 	output, err := cmd.Output()
 	if err != nil {
+		logger.WithField("action", "currentMappingsCommand").WithError(err).Error("exec.Command('wc -l ...') failed")
 		return 0
 	}
 	outputNoSpaces := strings.TrimSpace(string(output))
 	stringsSplit := strings.Split(outputNoSpaces, " ")
 	mappings, err := strconv.Atoi(stringsSplit[0])
 	if err != nil {
+		logger.WithField("action", "currentMappingsCommand").WithError(err).Error("strconv.Atoi(stringsSplit[0]) failed")
 		return 0
 	}
 	return int64(mappings)
