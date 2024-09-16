@@ -53,6 +53,7 @@ type Monitor struct {
 	limitSetter       limitSetter
 	maxRatio          float64
 	maxMemoryMappings int64
+	logger            logrus.FieldLogger
 
 	// state
 	mu                     sync.Mutex
@@ -66,11 +67,11 @@ type Monitor struct {
 
 // Refresh retrieves the current memory stats from the runtime and stores them
 // in the local cache
-func (m *Monitor) Refresh(updateMappings bool, logger logrus.FieldLogger) {
+func (m *Monitor) Refresh(updateMappings bool) {
 	m.obtainCurrentUsage()
 	m.updateLimit()
 	if updateMappings {
-		m.obtainCurrentMappings(logger)
+		m.obtainCurrentMappings()
 	}
 }
 
@@ -84,7 +85,7 @@ type limitSetter func(size int64) int64
 // Typically this would be called with LiveHeapReader and
 // debug.SetMemoryLimit
 func NewMonitor(metricsReader metricsReader, limitSetter limitSetter,
-	maxRatio float64,
+	maxRatio float64, logger logrus.FieldLogger,
 ) *Monitor {
 	m := &Monitor{
 		metricsReader:          metricsReader,
@@ -93,6 +94,7 @@ func NewMonitor(metricsReader metricsReader, limitSetter limitSetter,
 		maxMemoryMappings:      getMaxMemoryMappings(),
 		reservedMappingsBuffer: make([]int64, mappingsEntries), // one entry per second + buffer to handle delays
 		lastReservationsClear:  time.Now(),
+		logger:                 logger,
 	}
 	m.Refresh(true)
 	return m
@@ -179,8 +181,8 @@ func (m *Monitor) obtainCurrentUsage() {
 	m.setUsed(m.metricsReader())
 }
 
-func (m *Monitor) obtainCurrentMappings(logger logrus.FieldLogger) {
-	used := getCurrentMappings(logger)
+func (m *Monitor) obtainCurrentMappings() {
+	used := getCurrentMappings(m.logger)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.usedMappings = used
