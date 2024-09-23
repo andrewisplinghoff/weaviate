@@ -101,7 +101,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries at start (empty scratch space)")
 	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read at start (empty scratch space): %s", mapEntriesToStrings(entries))
+		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read at start (empty scratch space): %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
 	}
 
 	primaryFileName := filepath.Join(s.ScratchSpacePath, "primary")
@@ -199,7 +199,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries after close, before remove")
 	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read after close, before remove: %s", mapEntriesToStrings(entries))
+		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read after close, before remove: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
 	}
 
 	if err := os.Remove(primaryFileName); err != nil {
@@ -214,7 +214,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries after remove")
 	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read after remove: %s", mapEntriesToStrings(entries))
+		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read after remove: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
 	}
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
@@ -222,7 +222,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		if err2 != nil {
 			return written, fmt.Errorf("RemoveAll() at end of LSM WriteTo() failed with error %w, %w while reading file entries", err, err2)
 		}
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", mapEntriesToStrings(entries))
+		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
 		return written, err
 	}
 
