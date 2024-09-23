@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -32,6 +31,14 @@ type Indexes struct {
 	SecondaryIndexCount uint16
 	ScratchSpacePath    string
 	Logger              logrus.FieldLogger
+}
+
+func mapEntriesToStrings(entries []os.DirEntry) []string {
+	result := make([]string, len(entries))
+	for i, entry := range entries {
+		result[i] = entry.Name()
+	}
+	return result
 }
 
 func (s Indexes) WriteTo(w io.Writer) (int64, error) {
@@ -64,7 +71,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).Errorf("Failed to read file entries at start (empty scratch space)")
 	} else {
-		s.Logger.Debugf("Entries read at start (empty scratch space): %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
+		s.Logger.Debugf("Entries read at start (empty scratch space): %s", mapEntriesToStrings(entries))
 	}
 
 	primaryFileName := filepath.Join(s.ScratchSpacePath, "primary")
@@ -151,7 +158,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).Errorf("Failed to read file entries after close, before remove")
 	} else {
-		s.Logger.Debugf("Entries read after close, before remove: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
+		s.Logger.Debugf("Entries read after close, before remove: %s", mapEntriesToStrings(entries))
 	}
 
 	if err := os.Remove(primaryFileName); err != nil {
@@ -166,7 +173,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).Errorf("Failed to read file entries after remove")
 	} else {
-		s.Logger.Debugf("Entries read after remove: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
+		s.Logger.Debugf("Entries read after remove: %s", mapEntriesToStrings(entries))
 	}
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
@@ -174,7 +181,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		if err2 != nil {
 			return written, fmt.Errorf("RemoveAll() at end of LSM WriteTo() failed with error %w, %w while reading file entries", err, err2)
 		}
-		s.Logger.WithError(err).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
+		s.Logger.WithError(err).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", mapEntriesToStrings(entries))
 		return written, err
 	}
 
