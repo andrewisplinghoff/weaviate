@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -33,15 +35,35 @@ type Indexes struct {
 	Logger              logrus.FieldLogger
 }
 
-func mapEntriesToStrings(entries []os.DirEntry) []string {
+func mapEntriesToStrings(dirPath string, entries []os.DirEntry) []string {
 	result := make([]string, len(entries))
 	for i, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
 			result[i] = fmt.Sprintf("%s (error retrieving size)", entry.Name())
-		} else {
-			result[i] = fmt.Sprintf("%s (%d bytes)", entry.Name(), info.Size())
+			continue
 		}
+
+		filePath := filepath.Join(dirPath, entry.Name())
+		// Integrate the checkFileAccess call directly here
+		cmd := exec.Command("sh", "-c", fmt.Sprintf("lsof | grep '%s'", filePath))
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+
+		// Run the command and capture output
+		err = cmd.Run()
+		var processes string
+		if err != nil && out.Len() == 0 {
+			processes = fmt.Sprintf("error: %v", err)
+		} else {
+			processes = strings.TrimSpace(out.String())
+			if processes == "" {
+				processes = "none"
+			}
+		}
+
+		result[i] = fmt.Sprintf("%s (%d bytes, accessed by: %s)", entry.Name(), info.Size(), processes)
 	}
 	return result
 }
@@ -205,6 +227,22 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return written, nil
+}
+
+func checkFileAccess(filePath string) (string, error) {
+	// Prepare the `lsof | grep <filename>` command
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("lsof | grep '%s'", filePath))
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	// Run the command and capture output
+	err := cmd.Run()
+	if err != nil && out.Len() == 0 {
+		return "", err
+	}
+
+	return strings.TrimSpace(out.String()), nil
 }
 
 // pos indicates the position of a secondary index, assumes unsorted keys and
