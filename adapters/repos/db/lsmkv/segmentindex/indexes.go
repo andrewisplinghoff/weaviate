@@ -36,7 +36,12 @@ type Indexes struct {
 func mapEntriesToStrings(entries []os.DirEntry) []string {
 	result := make([]string, len(entries))
 	for i, entry := range entries {
-		result[i] = entry.Name()
+		info, err := entry.Info()
+		if err != nil {
+			result[i] = fmt.Sprintf("%s (error retrieving size)", entry.Name())
+		} else {
+			result[i] = fmt.Sprintf("%s (%d bytes)", entry.Name(), info.Size())
+		}
 	}
 	return result
 }
