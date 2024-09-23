@@ -189,7 +189,12 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		written += int64(n)
 	}
 
-	s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
+	entries, err = os.ReadDir(s.ScratchSpacePath)
+	if err != nil {
+		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries before close")
+	} else {
+		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
+	}
 
 	if err := primaryFD.Close(); err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("primaryFD.Close() failed")
