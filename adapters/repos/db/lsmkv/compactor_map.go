@@ -17,6 +17,8 @@ import (
 	"io"
 	"sort"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/pkg/errors"
 	"github.com/weaviate/weaviate/adapters/repos/db/lsmkv/segmentindex"
 )
@@ -43,11 +45,12 @@ type compactorMap struct {
 	// for backward-compatibility with states where the disk state for maps was
 	// not guaranteed to be sorted yet
 	requiresSorting bool
+	logger          logrus.FieldLogger
 }
 
 func newCompactorMapCollection(w io.WriteSeeker,
 	c1, c2 *segmentCursorCollectionReusable, level, secondaryIndexCount uint16,
-	scratchSpacePath string, requiresSorting bool, cleanupTombstones bool,
+	scratchSpacePath string, requiresSorting bool, cleanupTombstones bool, logger logrus.FieldLogger,
 ) *compactorMap {
 	return &compactorMap{
 		c1:                  c1,
@@ -59,6 +62,7 @@ func newCompactorMapCollection(w io.WriteSeeker,
 		secondaryIndexCount: secondaryIndexCount,
 		scratchSpacePath:    scratchSpacePath,
 		requiresSorting:     requiresSorting,
+		logger:              logger,
 	}
 }
 
@@ -234,6 +238,7 @@ func (c *compactorMap) writeIndices(keys []segmentindex.Key) error {
 		Keys:                keys,
 		SecondaryIndexCount: c.secondaryIndexCount,
 		ScratchSpacePath:    c.scratchSpacePath,
+		Logger:              c.logger,
 	}
 
 	_, err := indices.WriteTo(c.bufw)

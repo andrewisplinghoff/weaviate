@@ -15,10 +15,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
@@ -27,6 +31,7 @@ type Indexes struct {
 	Keys                []Key
 	SecondaryIndexCount uint16
 	ScratchSpacePath    string
+	Logger              logrus.FieldLogger
 }
 
 func (s Indexes) WriteTo(w io.Writer) (int64, error) {
@@ -53,6 +58,13 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 
 	if err := os.Mkdir(s.ScratchSpacePath, 0o777); err != nil {
 		return written, errors.Wrap(err, "create scratch space")
+	}
+
+	entries, err := os.ReadDir(s.ScratchSpacePath)
+	if err != nil {
+		s.Logger.WithError(err).Errorf("Failed to read file entries at start (empty scratch space)")
+	} else {
+		s.Logger.Debugf("Entries read at start (empty scratch space): %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
 	}
 
 	primaryFileName := filepath.Join(s.ScratchSpacePath, "primary")
@@ -135,7 +147,34 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		return written, err
 	}
 
+	entries, err = os.ReadDir(s.ScratchSpacePath)
+	if err != nil {
+		s.Logger.WithError(err).Errorf("Failed to read file entries after close, before remove")
+	} else {
+		s.Logger.Debugf("Entries read after close, before remove: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
+	}
+
+	if err := os.Remove(primaryFileName); err != nil {
+		return written, fmt.Errorf("error %w while removing primaryFileName %s", err, primaryFileName)
+	}
+
+	if err := os.Remove(secondaryFileName); err != nil {
+		return written, fmt.Errorf("error %w while removing secondaryFileName %s", err, secondaryFileName)
+	}
+
+	entries, err = os.ReadDir(s.ScratchSpacePath)
+	if err != nil {
+		s.Logger.WithError(err).Errorf("Failed to read file entries after remove")
+	} else {
+		s.Logger.Debugf("Entries read after remove: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
+	}
+
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
+		entries, err2 := os.ReadDir(s.ScratchSpacePath)
+		if err2 != nil {
+			return written, fmt.Errorf("RemoveAll() at end of LSM WriteTo() failed with error %w, %w while reading file entries", err, err2)
+		}
+		s.Logger.WithError(err).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]"))
 		return written, err
 	}
 

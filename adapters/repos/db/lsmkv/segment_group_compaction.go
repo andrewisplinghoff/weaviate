@@ -237,7 +237,7 @@ func (sg *SegmentGroup) compactOnce() (bool, error) {
 
 	case segmentindex.StrategyReplace:
 		c := newCompactorReplace(f, leftSegment.newCursor(),
-			rightSegment.newCursor(), level, secondaryIndices, scratchSpacePath, cleanupTombstones)
+			rightSegment.newCursor(), level, secondaryIndices, scratchSpacePath, cleanupTombstones, sg.logger)
 
 		if sg.metrics != nil {
 			sg.metrics.CompactionReplace.With(prometheus.Labels{"path": pathLabel}).Inc()
@@ -250,7 +250,7 @@ func (sg *SegmentGroup) compactOnce() (bool, error) {
 	case segmentindex.StrategySetCollection:
 		c := newCompactorSetCollection(f, leftSegment.newCollectionCursor(),
 			rightSegment.newCollectionCursor(), level, secondaryIndices,
-			scratchSpacePath, cleanupTombstones)
+			scratchSpacePath, cleanupTombstones, sg.logger)
 
 		if sg.metrics != nil {
 			sg.metrics.CompactionSet.With(prometheus.Labels{"path": pathLabel}).Inc()
@@ -264,7 +264,7 @@ func (sg *SegmentGroup) compactOnce() (bool, error) {
 		c := newCompactorMapCollection(f,
 			leftSegment.newCollectionCursorReusable(),
 			rightSegment.newCollectionCursorReusable(),
-			level, secondaryIndices, scratchSpacePath, sg.mapRequiresSorting, cleanupTombstones)
+			level, secondaryIndices, scratchSpacePath, sg.mapRequiresSorting, cleanupTombstones, sg.logger)
 
 		if sg.metrics != nil {
 			sg.metrics.CompactionMap.With(prometheus.Labels{"path": pathLabel}).Inc()

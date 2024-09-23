@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/weaviate/weaviate/adapters/repos/db/lsmkv/segmentindex"
 	"github.com/weaviate/weaviate/entities/lsmkv"
 )
@@ -39,11 +41,12 @@ type compactorReplace struct {
 	w                io.WriteSeeker
 	bufw             *bufio.Writer
 	scratchSpacePath string
+	logger           logrus.FieldLogger
 }
 
 func newCompactorReplace(w io.WriteSeeker,
 	c1, c2 *segmentCursorReplace, level, secondaryIndexCount uint16,
-	scratchSpacePath string, cleanupTombstones bool,
+	scratchSpacePath string, cleanupTombstones bool, logger logrus.FieldLogger,
 ) *compactorReplace {
 	return &compactorReplace{
 		c1:                  c1,
@@ -54,6 +57,7 @@ func newCompactorReplace(w io.WriteSeeker,
 		cleanupTombstones:   cleanupTombstones,
 		secondaryIndexCount: secondaryIndexCount,
 		scratchSpacePath:    scratchSpacePath,
+		logger:              logger,
 	}
 }
 
@@ -182,6 +186,7 @@ func (c *compactorReplace) writeIndices(keys []segmentindex.Key) error {
 		Keys:                keys,
 		SecondaryIndexCount: c.secondaryIndexCount,
 		ScratchSpacePath:    c.scratchSpacePath,
+		Logger:              c.logger,
 	}
 
 	_, err := indices.WriteTo(c.bufw)
