@@ -45,7 +45,7 @@ func mapEntriesToStrings(dirPath string, entries []os.DirEntry) []string {
 		}
 
 		filePath := filepath.Join(dirPath, entry.Name())
-		// Integrate the checkFileAccess call directly here
+		// Integrate the checkFileAccess call directly here with improved error handling
 		cmd := exec.Command("sh", "-c", fmt.Sprintf("lsof | grep '%s'", filePath))
 		var out bytes.Buffer
 		cmd.Stdout = &out
@@ -54,12 +54,16 @@ func mapEntriesToStrings(dirPath string, entries []os.DirEntry) []string {
 		// Run the command and capture output
 		err = cmd.Run()
 		var processes string
-		if err != nil && out.Len() == 0 {
-			processes = fmt.Sprintf("error: %v", err)
+		if err != nil {
+			if out.Len() == 0 {
+				processes = "none" // No processes are accessing the file
+			} else {
+				processes = fmt.Sprintf("error: %v", err)
+			}
 		} else {
 			processes = strings.TrimSpace(out.String())
 			if processes == "" {
-				processes = "none"
+				processes = "none" // No processes found in output
 			}
 		}
 
@@ -184,6 +188,8 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	} else {
 		written += int64(n)
 	}
+
+	s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
 
 	if err := primaryFD.Close(); err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("primaryFD.Close() failed")
