@@ -279,7 +279,7 @@ func (sg *SegmentGroup) compactOnce() (bool, error) {
 		rightCursor := rightSegment.newRoaringSetCursor()
 
 		c := roaringset.NewCompactor(f, leftCursor, rightCursor,
-			level, scratchSpacePath, cleanupTombstones)
+			level, scratchSpacePath, cleanupTombstones, sg.logger)
 
 		if sg.metrics != nil {
 			sg.metrics.CompactionRoaringSet.With(prometheus.Labels{"path": pathLabel}).Set(1)

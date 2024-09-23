@@ -924,7 +924,7 @@ func (b *Bucket) Shutdown(ctx context.Context) error {
 	}
 
 	b.flushLock.Lock()
-	if err := b.active.flush(); err != nil {
+	if err := b.active.flush(b.logger); err != nil {
 		return err
 	}
 	b.flushLock.Unlock()
@@ -1027,7 +1027,7 @@ func (b *Bucket) FlushAndSwitch() error {
 		return fmt.Errorf("switch active memtable: %w", err)
 	}
 
-	if err := b.flushing.flush(); err != nil {
+	if err := b.flushing.flush(b.logger); err != nil {
 		return fmt.Errorf("flush: %w", err)
 	}
 

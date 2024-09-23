@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/pkg/errors"
 	"github.com/weaviate/sroar"
 	"github.com/weaviate/weaviate/adapters/repos/db/lsmkv/segmentindex"
@@ -72,6 +74,7 @@ type Compactor struct {
 	bufw *bufio.Writer
 
 	scratchSpacePath string
+	logger           logrus.FieldLogger
 }
 
 // NewCompactor from left (older) and right (newer) seeker. See [Compactor] for
@@ -79,7 +82,7 @@ type Compactor struct {
 // requirements are the way they are.
 func NewCompactor(w io.WriteSeeker,
 	left, right *SegmentCursor, level uint16,
-	scratchSpacePath string, cleanupDeletions bool,
+	scratchSpacePath string, cleanupDeletions bool, logger logrus.FieldLogger,
 ) *Compactor {
 	return &Compactor{
 		left:             left,
@@ -89,6 +92,7 @@ func NewCompactor(w io.WriteSeeker,
 		currentLevel:     level,
 		cleanupDeletions: cleanupDeletions,
 		scratchSpacePath: scratchSpacePath,
+		logger:           logger,
 	}
 }
 
@@ -294,6 +298,7 @@ func (c *Compactor) writeIndexes(keys []segmentindex.Key) error {
 		Keys:                keys,
 		SecondaryIndexCount: 0,
 		ScratchSpacePath:    c.scratchSpacePath,
+		Logger:              c.logger,
 	}
 
 	_, err := indexes.WriteTo(c.bufw)

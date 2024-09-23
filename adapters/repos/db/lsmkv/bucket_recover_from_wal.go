@@ -83,7 +83,7 @@ func (b *Bucket) mayRecoverFromCommitLogs(ctx context.Context) error {
 				Error(errors.Wrap(err, "write-ahead-log ended abruptly, some elements may not have been recovered"))
 		}
 
-		if err := mt.flush(); err != nil {
+		if err := mt.flush(b.logger); err != nil {
 			return errors.Wrap(err, "flush memtable after WAL recovery")
 		}
 

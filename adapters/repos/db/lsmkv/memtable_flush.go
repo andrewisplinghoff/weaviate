@@ -14,6 +14,7 @@ package lsmkv
 import (
 	"bufio"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/weaviate/weaviate/adapters/repos/db/lsmkv/segmentindex"
 )
 
-func (m *Memtable) flush() error {
+func (m *Memtable) flush(logger logrus.FieldLogger) error {
 	// close the commit log first, this also forces it to be fsynced. If
 	// something fails there, don't proceed with flushing. The commit log will
 	// only be deleted at the very end, if the flush was successful
@@ -79,6 +80,7 @@ func (m *Memtable) flush() error {
 		Keys:                keys,
 		SecondaryIndexCount: m.secondaryIndices,
 		ScratchSpacePath:    m.path + ".scratch.d",
+		Logger:              logger,
 	}
 
 	if _, err := indices.WriteTo(w); err != nil {

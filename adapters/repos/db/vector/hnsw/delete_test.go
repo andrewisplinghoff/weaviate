@@ -17,6 +17,7 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -134,6 +135,14 @@ func TestDelete_WithoutCleaningUpTombstones(t *testing.T) {
 
 func TestDelete_WithCleaningUpTombstonesOnce(t *testing.T) {
 	// there is a single bulk clean event after all the deletes
+
+	entries, _ := os.ReadDir("C:\\Users\\cb2wiif\\empty-dir")
+	// fmt.Printf(err)
+	aftersprintf := fmt.Sprint(entries)
+	fmt.Printf(aftersprintf)
+	trimmed := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(entries)), ","), "[]")
+	fmt.Printf(trimmed)
+
 	vectors := vectorsForDeleteTest()
 	var vectorIndex *hnsw
 
