@@ -201,6 +201,7 @@ func (db *DB) BatchDeleteObjects(ctx context.Context, params objects.BatchDelete
 	if err != nil {
 		return objects.BatchDeleteResult{}, errors.Wrapf(err, "cannot delete objects")
 	}
+	db.logger.WithField("num_deleted_objects", len(deletedObjects)).Debugf("At end of BatchDeleteObjects")
 
 	result := objects.BatchDeleteResult{
 		Matches: matches,
