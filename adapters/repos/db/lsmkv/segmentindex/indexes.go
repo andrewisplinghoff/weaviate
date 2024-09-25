@@ -206,28 +206,6 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		return written, err
 	}
 
-	entries, err = os.ReadDir(s.ScratchSpacePath)
-	if err != nil {
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries after close, before remove")
-	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read after close, before remove: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
-	}
-
-	if err := os.Remove(primaryFileName); err != nil {
-		return written, fmt.Errorf("error %w while removing primaryFileName %s", err, primaryFileName)
-	}
-
-	if err := os.Remove(secondaryFileName); err != nil {
-		return written, fmt.Errorf("error %w while removing secondaryFileName %s", err, secondaryFileName)
-	}
-
-	entries, err = os.ReadDir(s.ScratchSpacePath)
-	if err != nil {
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries after remove")
-	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read after remove: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
-	}
-
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
 		entries, err2 := os.ReadDir(s.ScratchSpacePath)
 		if err2 != nil {
