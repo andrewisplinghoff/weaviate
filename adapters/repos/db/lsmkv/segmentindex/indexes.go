@@ -15,17 +15,12 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
-
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
-
-	"github.com/pkg/errors"
 )
 
 type Indexes struct {
@@ -33,19 +28,6 @@ type Indexes struct {
 	SecondaryIndexCount uint16
 	ScratchSpacePath    string
 	Logger              logrus.FieldLogger
-}
-
-func mapEntriesToStrings(entries []os.DirEntry) []string {
-	result := make([]string, len(entries))
-	for i, entry := range entries {
-		info, err := entry.Info()
-		if err != nil {
-			result[i] = fmt.Sprintf("%s (error retrieving size)", entry.Name())
-		} else {
-			result[i] = fmt.Sprintf("%s (%d bytes)", entry.Name(), info.Size())
-		}
-	}
-	return result
 }
 
 func (s Indexes) WriteTo(w io.Writer) (int64, error) {
@@ -75,13 +57,6 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err := os.Mkdir(s.ScratchSpacePath, 0o777); err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("os.Mkdir(s.ScratchSpacePath, 0o777) failed")
 		return written, errors.Wrap(err, "create scratch space")
-	}
-
-	entries, err := os.ReadDir(s.ScratchSpacePath)
-	if err != nil {
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries at start (empty scratch space)")
-	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read at start (empty scratch space): %s", mapEntriesToStrings(entries))
 	}
 
 	primaryFileName := filepath.Join(s.ScratchSpacePath, "primary")
@@ -165,66 +140,6 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		written += int64(n)
 	}
 
-	entries, err = os.ReadDir(s.ScratchSpacePath)
-	if err != nil {
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries before close")
-	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(entries))
-	}
-
-	flags, err := unix.FcntlInt(primaryFD.Fd(), unix.F_GETFL, 0)
-	if err != nil {
-		fmt.Println("Error getting file status flags:", err)
-		return written, err
-	}
-
-	// Use the unix package to get the file descriptor flags
-	fdFlags, err := unix.FcntlInt(primaryFD.Fd(), unix.F_GETFD, 0)
-	if err != nil {
-		fmt.Println("Error getting file descriptor flags:", err)
-		return written, err
-	}
-
-	// Collect information to log
-	var logs []string
-
-	logs = append(logs, fmt.Sprintf("File status flags: 0x%x", flags))
-	logs = append(logs, fmt.Sprintf("File descriptor flags: 0x%x", fdFlags))
-
-	// Check for specific file status flags
-	if flags&unix.O_RDWR != 0 {
-		logs = append(logs, "File is opened for read/write")
-	}
-	if flags&unix.O_RDONLY != 0 {
-		logs = append(logs, "File is opened for read-only")
-	}
-	if flags&unix.O_WRONLY != 0 {
-		logs = append(logs, "File is opened for write-only")
-	}
-	if flags&unix.O_APPEND != 0 {
-		logs = append(logs, "File is opened in append mode")
-	}
-	if flags&unix.O_NONBLOCK != 0 {
-		logs = append(logs, "File is opened in non-blocking mode")
-	}
-	if flags&unix.O_SYNC != 0 {
-		logs = append(logs, "File is opened in synchronous mode")
-	}
-	if flags&unix.O_LARGEFILE != 0 {
-		logs = append(logs, "File is opened in large file mode")
-	}
-
-	// Check for file descriptor flags
-	if fdFlags&unix.FD_CLOEXEC != 0 {
-		logs = append(logs, "File descriptor has the FD_CLOEXEC flag set")
-	} else {
-		logs = append(logs, "File descriptor does NOT have the FD_CLOEXEC flag set")
-	}
-
-	// Join all log messages into a single string
-	logMessage := strings.Join(logs, "\n")
-	s.Logger.Debugf(logMessage)
-
 	if err := primaryFD.Close(); err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("primaryFD.Close() failed")
 		return written, err
@@ -236,11 +151,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	if err := os.RemoveAll(s.ScratchSpacePath); err != nil {
-		entries, err2 := os.ReadDir(s.ScratchSpacePath)
-		if err2 != nil {
-			return written, fmt.Errorf("RemoveAll() at end of LSM WriteTo() failed with error %w, %w while reading file entries", err, err2)
-		}
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", mapEntriesToStrings(entries))
+		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("RemoveAll() at end of LSM WriteTo() failed")
 		return written, err
 	}
 
