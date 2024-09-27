@@ -38,7 +38,7 @@ const (
 )
 
 const (
-	MappingDelayInS = 2
+	MappingDelayInS = 1
 	mappingsEntries = 60 + MappingDelayInS
 )
 
