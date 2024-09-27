@@ -79,7 +79,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries at start (empty scratch space)")
 	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read at start (empty scratch space): %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
+		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Entries read at start (empty scratch space): %s", mapEntriesToStrings(entries))
 	}
 
 	primaryFileName := filepath.Join(s.ScratchSpacePath, "primary")
@@ -167,7 +167,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("Failed to read file entries before close")
 	} else {
-		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
+		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(entries))
 	}
 
 	if err := primaryFD.Close(); err != nil {
@@ -185,7 +185,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 		if err2 != nil {
 			return written, fmt.Errorf("RemoveAll() at end of LSM WriteTo() failed with error %w, %w while reading file entries", err, err2)
 		}
-		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", mapEntriesToStrings(s.ScratchSpacePath, entries))
+		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("RemoveAll() at end of LSM WriteTo() failed, entries read: %s", mapEntriesToStrings(entries))
 		return written, err
 	}
 
