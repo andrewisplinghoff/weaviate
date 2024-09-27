@@ -179,7 +179,7 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	// Use the unix package to get the file descriptor flags
-	fdFlags, err := unix.FcntlInt(primaryFD.Fd()), unix.F_GETFD, 0)
+	fdFlags, err := unix.FcntlInt(primaryFD.Fd(), unix.F_GETFD, 0)
 	if err != nil {
 		fmt.Println("Error getting file descriptor flags:", err)
 		return
