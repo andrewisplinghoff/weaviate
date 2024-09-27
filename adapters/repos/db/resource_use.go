@@ -53,9 +53,10 @@ func (d *DB) scanResourceUsage() {
 			case <-d.shutdown:
 				return
 			case <-t.C:
+				updateMappings := i%(memwatch.MappingDelayInS*2) == 0
 				if !d.resourceScanState.isReadOnly {
 					du := d.getDiskUse(d.config.RootPath)
-					d.resourceUseWarn(d.memMonitor, du, false)
+					d.resourceUseWarn(d.memMonitor, du, updateMappings)
 					d.resourceUseReadonly(d.memMonitor, du)
 				}
 				i += 1
