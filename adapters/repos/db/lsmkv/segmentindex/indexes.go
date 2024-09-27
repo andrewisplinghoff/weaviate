@@ -20,8 +20,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/pkg/errors"
 )
@@ -169,6 +171,59 @@ func (s Indexes) WriteTo(w io.Writer) (int64, error) {
 	} else {
 		s.Logger.WithField("ScratchSpacePath", s.ScratchSpacePath).Debugf("Before closing of files: %s", mapEntriesToStrings(entries))
 	}
+
+	flags, err := unix.FcntlInt(primaryFD.Fd(), unix.F_GETFL, 0)
+	if err != nil {
+		fmt.Println("Error getting file status flags:", err)
+		return
+	}
+
+	// Use the unix package to get the file descriptor flags
+	fdFlags, err := unix.FcntlInt(primaryFD.Fd()), unix.F_GETFD, 0)
+	if err != nil {
+		fmt.Println("Error getting file descriptor flags:", err)
+		return
+	}
+
+	// Collect information to log
+	var logs []string
+
+	logs = append(logs, fmt.Sprintf("File status flags: 0x%x", flags))
+	logs = append(logs, fmt.Sprintf("File descriptor flags: 0x%x", fdFlags))
+
+	// Check for specific file status flags
+	if flags&unix.O_RDWR != 0 {
+		logs = append(logs, "File is opened for read/write")
+	}
+	if flags&unix.O_RDONLY != 0 {
+		logs = append(logs, "File is opened for read-only")
+	}
+	if flags&unix.O_WRONLY != 0 {
+		logs = append(logs, "File is opened for write-only")
+	}
+	if flags&unix.O_APPEND != 0 {
+		logs = append(logs, "File is opened in append mode")
+	}
+	if flags&unix.O_NONBLOCK != 0 {
+		logs = append(logs, "File is opened in non-blocking mode")
+	}
+	if flags&unix.O_SYNC != 0 {
+		logs = append(logs, "File is opened in synchronous mode")
+	}
+	if flags&unix.O_LARGEFILE != 0 {
+		logs = append(logs, "File is opened in large file mode")
+	}
+
+	// Check for file descriptor flags
+	if fdFlags&unix.FD_CLOEXEC != 0 {
+		logs = append(logs, "File descriptor has the FD_CLOEXEC flag set")
+	} else {
+		logs = append(logs, "File descriptor does NOT have the FD_CLOEXEC flag set")
+	}
+
+	// Join all log messages into a single string
+	logMessage := strings.Join(logs, "\n")
+	s.Logger.Debugf(logMessage)
 
 	if err := primaryFD.Close(); err != nil {
 		s.Logger.WithError(err).WithField("ScratchSpacePath", s.ScratchSpacePath).Errorf("primaryFD.Close() failed")
