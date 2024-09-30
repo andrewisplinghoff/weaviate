@@ -16,11 +16,9 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"runtime"
 	"runtime/metrics"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -194,19 +192,24 @@ func getCurrentMappings() int64 {
 }
 
 func currentMappingsCommand() int64 {
-	cmd := exec.Command("wc", "-l", fmt.Sprintf("/proc/%s/maps", strconv.Itoa(os.Getpid()))) // print mappings
+	filePath := fmt.Sprintf("/proc/%d/maps", os.Getpid())
+	file, err := os.Open(filePath)
+	if err != nil {
+		return 0
+	}
+	defer file.Close()
 
-	output, err := cmd.Output()
-	if err != nil {
+	var lineCount int64
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lineCount++
+	}
+
+	if err := scanner.Err(); err != nil {
 		return 0
 	}
-	outputNoSpaces := strings.TrimSpace(string(output))
-	stringsSplit := strings.Split(outputNoSpaces, " ")
-	mappings, err := strconv.Atoi(stringsSplit[0])
-	if err != nil {
-		return 0
-	}
-	return int64(mappings)
+
+	return lineCount
 }
 
 func getMaxMemoryMappings() int64 {
