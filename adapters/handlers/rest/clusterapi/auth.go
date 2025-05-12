@@ -12,9 +12,9 @@
 package clusterapi
 
 import (
-	"net/http"
-
+	"github.com/sirupsen/logrus"
 	"github.com/weaviate/weaviate/usecases/cluster"
+	"net/http"
 )
 
 type auth interface {
@@ -23,10 +23,11 @@ type auth interface {
 
 type basicAuthHandler struct {
 	basicAuth cluster.BasicAuth
+	logger    logrus.FieldLogger
 }
 
-func NewBasicAuthHandler(authConfig cluster.AuthConfig) auth {
-	return &basicAuthHandler{authConfig.BasicAuth}
+func NewBasicAuthHandler(authConfig cluster.AuthConfig, logger logrus.FieldLogger) auth {
+	return &basicAuthHandler{authConfig.BasicAuth, logger}
 }
 
 func (h *basicAuthHandler) handleFunc(handler http.HandlerFunc) http.HandlerFunc {
@@ -35,10 +36,18 @@ func (h *basicAuthHandler) handleFunc(handler http.HandlerFunc) http.HandlerFunc
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		u, p, ok := r.BasicAuth()
+		h.logger.WithFields(logrus.Fields{
+			"u":  u,
+			"ok": ok,
+		}).Debug("in basic auth handler handleFunc before pw check")
 		if ok && u == h.basicAuth.Username && p == h.basicAuth.Password {
 			handler(w, r)
 			return
 		}
+		h.logger.WithFields(logrus.Fields{
+			"u":  u,
+			"ok": ok,
+		}).Debug("in basic auth handler handleFunc - returning 401")
 		// unauthorized request, send 401
 		w.WriteHeader(401)
 	}
