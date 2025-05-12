@@ -23,7 +23,7 @@ import (
 
 func Serve(appState *state.State) {
 	port := appState.ServerConfig.Config.Cluster.DataBindPort
-	auth := NewBasicAuthHandler(appState.ServerConfig.Config.Cluster.AuthConfig, appState.logger)
+	auth := NewBasicAuthHandler(appState.ServerConfig.Config.Cluster.AuthConfig, appState.Logger)
 
 	appState.Logger.WithField("port", port).
 		WithField("action", "cluster_api_startup").
