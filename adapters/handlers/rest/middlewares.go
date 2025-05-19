@@ -246,7 +246,16 @@ func addInjectHeadersIntoContext(next http.Handler) http.Handler {
 func addLiveAndReadyness(state *state.State, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/v1/.well-known/live" {
-			w.WriteHeader(http.StatusOK)
+			code := http.StatusOK
+			numNodes := state.Cluster.NodeCount()
+			if state.ServerConfig.Config.Raft.BootstrapExpect > 1 && numNodes <= 1 {
+				code = http.StatusServiceUnavailable
+				state.Logger.
+					WithField("numNodes", numNodes).
+					WithField("bootstrapExpect", state.ServerConfig.Config.Raft.BootstrapExpect).
+					Warning("liveness check failed due to no other members present in memberlist in multi-node cluster")
+			}
+			w.WriteHeader(code)
 			return
 		}
 
