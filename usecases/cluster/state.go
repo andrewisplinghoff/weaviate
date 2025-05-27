@@ -49,6 +49,7 @@ type State struct {
 	delegate             delegate
 	maintenanceNodesLock sync.RWMutex
 	rejoinOnce           sync.Once
+	rejoinWaitGroup      sync.WaitGroup
 }
 
 type Config struct {
@@ -317,7 +318,9 @@ func (s *State) NodeAddress(id string) string {
 		joinAddr = strings.Split(s.config.Join, ",")
 	}
 	if nodeCount == 1 && len(joinAddr) > 0 && s.config.RaftBootstrapExpect > 1 {
+		s.rejoinWaitGroup.Add(1)
 		s.rejoinOnce.Do(func() {
+			defer s.rejoinWaitGroup.Done()
 			logrus.WithFields(logrus.Fields{
 				"action":     "memberlist_rejoin",
 				"node_count": nodeCount,
@@ -336,6 +339,7 @@ func (s *State) NodeAddress(id string) string {
 				}).Info("Successfully rejoined the memberlist cluster")
 			}
 		})
+		s.rejoinWaitGroup.Wait() // Wait for rejoin to complete
 	}
 
 	for _, mem := range s.list.Members() {
