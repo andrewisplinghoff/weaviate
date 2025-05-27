@@ -48,6 +48,7 @@ type State struct {
 	nonStorageNodes      map[string]struct{}
 	delegate             delegate
 	maintenanceNodesLock sync.RWMutex
+	rejoinOnce           sync.Once
 }
 
 type Config struct {
@@ -316,23 +317,25 @@ func (s *State) NodeAddress(id string) string {
 		joinAddr = strings.Split(s.config.Join, ",")
 	}
 	if nodeCount == 1 && len(joinAddr) > 0 && s.config.RaftBootstrapExpect > 1 {
-		logrus.WithFields(logrus.Fields{
-			"action":     "memberlist_rejoin",
-			"node_count": nodeCount,
-		}).Warn("detected single node split-brain, attempting to rejoin memberlist cluster")
-		// Only attempt rejoin if we're supposed to be part of a larger cluster
-		_, err := s.list.Join(joinAddr)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"action":          "memberlist_rejoin",
-				"remote_hostname": joinAddr,
-			}).WithError(err).Error("memberlist rejoin not successful")
-		} else {
+		s.rejoinOnce.Do(func() {
 			logrus.WithFields(logrus.Fields{
 				"action":     "memberlist_rejoin",
 				"node_count": nodeCount,
-			}).Info("Successfully rejoined the memberlist cluster")
-		}
+			}).Warn("detected single node split-brain, attempting to rejoin memberlist cluster")
+			// Only attempt rejoin if we're supposed to be part of a larger cluster
+			_, err := s.list.Join(joinAddr)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"action":          "memberlist_rejoin",
+					"remote_hostname": joinAddr,
+				}).WithError(err).Error("memberlist rejoin not successful")
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"action":     "memberlist_rejoin",
+					"node_count": nodeCount,
+				}).Info("Successfully rejoined the memberlist cluster")
+			}
+		})
 	}
 
 	for _, mem := range s.list.Members() {
