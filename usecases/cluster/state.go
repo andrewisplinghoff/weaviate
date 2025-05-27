@@ -318,8 +318,8 @@ func (s *State) NodeAddress(id string) string {
 		joinAddr = strings.Split(s.config.Join, ",")
 	}
 	if nodeCount == 1 && len(joinAddr) > 0 && s.config.RaftBootstrapExpect > 1 {
-		s.rejoinWaitGroup.Add(1)
 		s.rejoinOnce.Do(func() { // prevent parallel rejoins
+			s.rejoinWaitGroup.Add(1)
 			defer s.rejoinWaitGroup.Done()
 			logrus.WithFields(logrus.Fields{
 				"action":     "memberlist_rejoin",
